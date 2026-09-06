@@ -21,7 +21,7 @@ float           Team::tankColor[NumTeams][3] =
     { 1.0f, 1.0f, 0.0f },   // rogue
     { 1.0f, 0.0f, 0.0f },   // red
     { 0.0f, 1.0f, 0.0f },   // green
-    { 0.1f, 0.2f, 1.0f },   // blue
+    { 0.25f, 0.45f, 1.0f },  // blue (lightened: was 0.1, 0.2, 1.0 — too dark)
     { 1.0f, 0.0f, 1.0f },   // purple
     { 1.0f, 1.0f, 1.0f },   // observer
     { 0.8f, 0.8f, 0.8f },   // rabbit
@@ -32,7 +32,7 @@ float           Team::radarColor[NumTeams][3] =
     { 1.0f, 1.0f, 0.0f },   // rogue
     { 1.0f, 0.15f, 0.15f }, // red
     { 0.2f, 0.9f, 0.2f },   // green
-    { 0.08f, 0.25, 1.0f},   // blue
+    { 0.2f, 0.5f, 1.0f },   // blue (lightened: was 0.08, 0.25, 1.0 — too dark)
     { 1.0f, 0.4f, 1.0f },   // purple
     { 1.0f, 1.0f, 1.0f },   // observer
     { 1.0f, 1.0f, 1.0f },   // rabbit

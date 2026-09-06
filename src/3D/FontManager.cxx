@@ -42,7 +42,7 @@ static GLfloat BrightColors[9][3] =
     {1.0f,1.0f,0.0f}, // yellow
     {1.0f,0.0f,0.0f}, // red
     {0.0f,1.0f,0.0f}, // green
-    {0.1f,0.2f,1.0f}, // blue
+    {0.25f,0.45f,1.0f}, // blue (lightened for readability)
     {1.0f,0.0f,1.0f}, // purple
     {1.0f,1.0f,1.0f}, // white
     {0.5f,0.5f,0.5f}, // grey
