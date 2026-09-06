@@ -3,6 +3,7 @@ name: Build deb package
 on:
   push:
     branches: [2.4]
+    tags: ['v*']
   pull_request:
     branches: [2.4]
   workflow_dispatch:
