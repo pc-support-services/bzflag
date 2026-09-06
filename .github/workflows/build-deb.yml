@@ -82,8 +82,12 @@ jobs:
 
           chmod 755 "$PKGDIR/DEBIAN"
           find "$PKGDIR" -type d -exec chmod 755 {} +
-          find "$PKGDIR" -type f ! -path "$PKGDIR/DEBIAN/*" -printf '%P\0' \
-            | xargs -0 md5sum > "$PKGDIR/DEBIAN/md5sums"
+
+          # md5sums must contain paths relative to the package root, so
+          # run find+md5sum from inside $PKGDIR.
+          ( cd "$PKGDIR" && \
+            find . -type f ! -path './DEBIAN/*' -printf '%P\0' \
+            | xargs -0 md5sum > DEBIAN/md5sums )
 
           fakeroot dpkg-deb --build --root-owner-group "$PKGDIR" \
             "$PWD/bzflag_${VERSION}_arm64.deb"
