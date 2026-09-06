@@ -1,0 +1,108 @@
+name: Build deb package
+
+on:
+  push:
+    branches: [2.4]
+  pull_request:
+    branches: [2.4]
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake libtool autotools-dev \
+            g++ make \
+            libc-ares-dev libcurl4-openssl-dev \
+            libsdl2-dev libglew-dev libglu1-mesa-dev libgl1-mesa-dev \
+            libncurses5-dev libasound2-dev libpulse-dev \
+            zlib1g-dev \
+            fakeroot dpkg-dev
+
+      - name: Autoreconf
+        run: ./autogen.sh
+
+      - name: Configure
+        run: ./configure
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Stage install
+        run: |
+          make install-strip DESTDIR="$PWD/stage"
+
+      - name: Build deb package
+        run: |
+          set -e
+          VERSION="2.4.31-${GITHUB_RUN_NUMBER}"
+          PKGDIR="$PWD/bzflag-deb"
+          mkdir -p "$PKGDIR/DEBIAN"
+          mkdir -p "$PKGDIR/usr/local"
+          cp -a "$PWD/stage/usr/local"/* "$PKGDIR/usr/local/"
+
+          cat > "$PKGDIR/DEBIAN/control" << EOF
+          Package: bzflag
+          Version: ${VERSION}
+          Architecture: arm64
+          Maintainer: ${GITHUB_ACTOR} <${GITHUB_ACTOR}@users.noreply.github.com>
+          Depends: libc6, libstdc++6, libcurl4, libsdl2-2.0-0, libglew2.2, libglu1-mesa | libglu1, libgl1, libncurses6, libasound2, libpulse0, libcares2, zlib1g
+          Section: games
+          Priority: optional
+          Description: 3D multiplayer tank battle game
+           BZFlag is a free multiplayer 3D tank battle game. Players drive tanks
+           around a battlefield, trying to capture flags from opposing teams while
+           defending their own.
+           .
+           This package contains the client (bzflag), server (bzfs), and
+           console admin tool (bzadmin).
+          Homepage: https://www.bzflag.org/
+          EOF
+
+          # desktop file, icons, postinst/postrm from the template
+          if [ -d package/bzflag-deb/usr ]; then
+            cp -a package/bzflag-deb/usr/* "$PKGDIR/usr/" 2>/dev/null || true
+          fi
+          if [ -f package/bzflag-deb/DEBIAN/postinst ]; then
+            cp package/bzflag-deb/DEBIAN/postinst "$PKGDIR/DEBIAN/"
+          fi
+          if [ -f package/bzflag-deb/DEBIAN/postrm ]; then
+            cp package/bzflag-deb/DEBIAN/postrm "$PKGDIR/DEBIAN/"
+          fi
+
+          chmod 755 "$PKGDIR/DEBIAN"
+          find "$PKGDIR" -type d -exec chmod 755 {} +
+          find "$PKGDIR" -type f ! -path "$PKGDIR/DEBIAN/*" -printf '%P\0' \
+            | xargs -0 md5sum > "$PKGDIR/DEBIAN/md5sums"
+
+          fakeroot dpkg-deb --build --root-owner-group "$PKGDIR" \
+            "$PWD/bzflag_${VERSION}_arm64.deb"
+
+      - name: Verify deb
+        run: |
+          ls -la bzflag_*.deb
+          dpkg-deb -I bzflag_*.deb | head -20
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bzflag-deb-arm64
+          path: bzflag_*.deb
+          if-no-files-found: error
+
+      - name: Attach to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: bzflag_*.deb
+          generate_release_notes: true
