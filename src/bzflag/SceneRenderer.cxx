@@ -76,6 +76,8 @@ SceneRenderer::SceneRenderer() :
     blank(false),
     invert(false),
     sunBrightness(1.0f),
+    gamma(1.0f),
+    lastJulianDay(unixEpoch),
     scene(NULL),
     background(NULL),
     useQualityValue(2),
@@ -574,6 +576,7 @@ void SceneRenderer::clearLights()
 
 void SceneRenderer::setTimeOfDay(double julianDay)
 {
+    lastJulianDay = julianDay;
 
     // get position of sun and moon at 0,0 lat/long
     float sunDir[3], moonDir[3];
@@ -617,6 +620,58 @@ void SceneRenderer::setTimeOfDay(double julianDay)
 
     // set sun and ambient colors
     ::getSunColor(sunDir, sunColor, ambientColor, sunBrightness);
+
+    // cache the gamma==1 base colors so that applyGamma() can rescale
+    // later without recomputing celestial positions.
+    baseSunColor[0] = sunColor[0];
+    baseSunColor[1] = sunColor[1];
+    baseSunColor[2] = sunColor[2];
+    baseSunColor[3] = sunColor[3];
+    baseAmbientColor[0] = ambientColor[0];
+    baseAmbientColor[1] = ambientColor[1];
+    baseAmbientColor[2] = ambientColor[2];
+    baseAmbientColor[3] = ambientColor[3];
+
+    // apply gamma / brightness correction to the scene lighting.
+    // gamma > 1 brightens, gamma < 1 darkens, gamma == 1 is neutral.
+    // (This is the renderer-side equivalent of the old SDL gamma ramp,
+    // which is broken on Wayland and has no visible effect under
+    // XWayland compositing.)
+    applyGamma();
+
+    if (background)
+        background->setCelestial(*this, sunDir, moonDir);
+}
+
+
+void SceneRenderer::applyGamma()
+{
+    // rescale sun and ambient from the cached base (gamma==1) colors.
+    // gamma > 1 brightens, gamma < 1 darkens, gamma == 1 is neutral.
+    if (gamma == 1.0f)
+    {
+        sunColor[0] = baseSunColor[0];
+        sunColor[1] = baseSunColor[1];
+        sunColor[2] = baseSunColor[2];
+        sunColor[3] = baseSunColor[3];
+        ambientColor[0] = baseAmbientColor[0];
+        ambientColor[1] = baseAmbientColor[1];
+        ambientColor[2] = baseAmbientColor[2];
+        ambientColor[3] = baseAmbientColor[3];
+    }
+    else
+    {
+        const float g = gamma;
+        sunColor[0] = baseSunColor[0] * g;
+        sunColor[1] = baseSunColor[1] * g;
+        sunColor[2] = baseSunColor[2] * g;
+        sunColor[3] = baseSunColor[3];
+        ambientColor[0] = baseAmbientColor[0] * g;
+        ambientColor[1] = baseAmbientColor[1] * g;
+        ambientColor[2] = baseAmbientColor[2] * g;
+        ambientColor[3] = baseAmbientColor[3];
+    }
+
     theSun.setColor(sunColor);
     GLfloat maxComponent = sunColor[0];
     if (sunColor[1] > maxComponent) maxComponent = sunColor[1];
@@ -625,11 +680,25 @@ void SceneRenderer::setTimeOfDay(double julianDay)
     sunScaledColor[0] = sunColor[0] / maxComponent;
     sunScaledColor[1] = sunColor[1] / maxComponent;
     sunScaledColor[2] = sunColor[2] / maxComponent;
+    sunScaledColor[3] = sunColor[3];
     ambientColor[3] = 1.0f;
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColor);
+}
 
-    if (background)
-        background->setCelestial(*this, sunDir, moonDir);
+
+void SceneRenderer::setGamma(float _gamma)
+{
+    if (_gamma < 0.1f) _gamma = 0.1f;
+    if (_gamma > 10.0f) _gamma = 10.0f;
+    gamma = _gamma;
+    // re-apply the lighting with the new gamma.  cheaper than setTimeOfDay():
+    // skips celestial position math, just rescales the cached base colors.
+    applyGamma();
+}
+
+float SceneRenderer::getGamma() const
+{
+    return gamma;
 }
 
 

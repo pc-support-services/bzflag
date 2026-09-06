@@ -1,5 +1,3 @@
-SUBDIRS = TextTool2.xcodeproj
-
 bin_PROGRAMS = TextTool2
 
 TextTool2_SOURCES = \

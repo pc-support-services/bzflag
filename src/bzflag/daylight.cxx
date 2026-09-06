@@ -221,11 +221,11 @@ static const float  dayElevation = 0.087f;      // ~sin(5)
 void            getSunColor(const float sunDir[3], GLfloat color[3],
                             GLfloat ambient[3], GLfloat& brightness)
 {
-    static const GLfloat  highSunColor[3] = { 1.75f, 1.75f, 1.4f };
+    static const GLfloat  highSunColor[3] = { 2.0f, 2.0f, 1.6f };
     static const GLfloat  lowSunColor[3] = { 0.75f, 0.27f, 0.0f };
     static const GLfloat  moonColor[3] = { 0.4f, 0.4f, 0.4f };
-    static const GLfloat  nightAmbient[3] = { 0.3f, 0.3f, 0.3f };
-    static const GLfloat  dayAmbient[3] = { 0.35f, 0.5f, 0.5f };
+    static const GLfloat  nightAmbient[3] = { 0.4f, 0.4f, 0.4f };
+    static const GLfloat  dayAmbient[3] = { 0.5f, 0.6f, 0.6f };
 
     if (sunDir[2] <= -0.009f)         // it's the moon
     {

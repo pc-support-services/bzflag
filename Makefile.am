@@ -23,9 +23,7 @@ DIST_SUBDIRS = \
 	m4 \
 	misc \
 	plugins \
-	tools \
-	MSVC \
-	Xcode
+	tools
 
 EXTRA_DIST = \
 	.editorconfig \

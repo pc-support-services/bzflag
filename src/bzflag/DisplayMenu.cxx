@@ -179,16 +179,13 @@ DisplayMenu::DisplayMenu() : formatMenu(NULL)
 
 
 
-    if (((BzfWindow*)getMainWindow()->getWindow())->hasGammaControl())
-    {
-        option = new HUDuiList;
-        option->setFontFace(fontFace);
-        option->setLabel("Brightness:");
-        option->setCallback(callback, "g");
-        option->createSlider(15);
-        option->update();
-        listHUD.push_back(option);
-    }
+    option = new HUDuiList;
+    option->setFontFace(fontFace);
+    option->setLabel("Brightness:");
+    option->setCallback(callback, "g");
+    option->createSlider(15);
+    option->update();
+    listHUD.push_back(option);
 
     option = new HUDuiList;
     option->setFontFace(fontFace);
@@ -395,9 +392,7 @@ void            DisplayMenu::resize(int _width, int _height)
 
 
         // brightness
-        BzfWindow* window = getMainWindow()->getWindow();
-        if (window->hasGammaControl())
-            ((HUDuiList*)listHUD[i++])->setIndex(gammaToIndex(window->getGamma()));
+        ((HUDuiList*)listHUD[i++])->setIndex(gammaToIndex(renderer->getGamma()));
 
         // energy saver
         ((HUDuiList*)listHUD[i++])->setIndex(BZDB.evalInt("saveEnergy"));
@@ -521,9 +516,7 @@ void            DisplayMenu::callback(HUDuiControl* w, const void* data)
         break;
     }
     case 'g':
-        BzfWindow* window = getMainWindow()->getWindow();
-        if (window->hasGammaControl())
-            window->setGamma(indexToGamma(list->getIndex()));
+        getSceneRenderer()->setGamma(indexToGamma(list->getIndex()));
         break;
     }
 }

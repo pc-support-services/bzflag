@@ -32,7 +32,8 @@ ServerList::ServerList() :
     addedCacheToList(false),
     phase(-1),
     serverCache(ServerListCache::get()),
-    pingBcastSocket(-1)
+    pingBcastSocket(-1),
+    retryCount(0)
 {
 }
 
@@ -53,6 +54,11 @@ void ServerList::startServerPings(StartupInfo *info)
         phase = -1;
     else
         phase = 0;
+
+    // fresh (re)start: give the caller a full retry budget again.
+    // without this, a manual refresh after the list server gave up
+    // would inherit the exhausted retryCount and only get one attempt.
+    retryCount = 0;
 
     // also try broadcast
     pingBcastSocket = openBroadcast(BroadcastPort, NULL, &pingBcastAddr);
@@ -265,6 +271,14 @@ void            ServerList::checkEchos(StartupInfo *info)
     // *** NOTE *** searching spinner update was here
 
     // lookup server list in phase 0
+    // if a previous attempt failed, wait for the retry interval before
+    // re-issuing the LIST request so we don't hammer the list server
+    if (phase == -1 && retryCount > 0 && retryCount <= MaxRetries)
+    {
+        if ((TimeKeeper::getCurrent() - retryTime) >= 0.0)
+            phase = 0;
+    }
+
     if (phase == 0)
     {
 
@@ -373,10 +387,22 @@ void ServerList::finalization(char *, unsigned int, bool good)
     {
         printError("Can't talk with list server");
         addCacheToList();
-        phase = -1;
+        // schedule a retry instead of giving up permanently
+        retryCount++;
+        if (retryCount <= MaxRetries)
+        {
+            retryTime = TimeKeeper::getCurrent();
+            retryTime += RetryInterval;
+            phase = -1;   // will be re-armed to 0 by checkEchos() when retryTime is reached
+        }
+        else
+            phase = -1;   // give up
     }
     else
+    {
+        retryCount = 0;
         phase = 4;
+    }
 }
 
 const std::vector<ServerItem>& ServerList::getServers()

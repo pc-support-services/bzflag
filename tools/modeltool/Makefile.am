@@ -1,5 +1,3 @@
-SUBDIRS = MSVC
-
 bin_PROGRAMS = modeltool
 
 modeltool_SOURCES =	\

@@ -24,6 +24,7 @@
 #include "StartupInfo.h"
 #include "ServerItem.h"
 #include "ServerListCache.h"
+#include "TimeKeeper.h"
 
 
 /** The ServerList class contains links to the list server as well as
@@ -66,6 +67,12 @@ private:
     int pingBcastSocket;
     struct sockaddr_in pingBcastAddr;
     StartupInfo *startupInfo;
+
+    // list server retry state
+    TimeKeeper retryTime;
+    int retryCount;
+    static const int RetryInterval = 5;   // seconds between retries
+    static const int MaxRetries = 6;     // give up after this many attempts
 };
 
 #endif /* __SERVERLIST_H__ */

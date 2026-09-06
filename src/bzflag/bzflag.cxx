@@ -618,11 +618,8 @@ void dumpResources()
     if (isSoundOpen())
         BZDB.set("volume", TextUtils::format("%d", getSoundVolume()));
 
-    if (RENDERER.getWindow().getWindow()->hasGammaControl())
-    {
-        BZDB.set("gamma",
-                 TextUtils::format("%f", RENDERER.getWindow().getWindow()->getGamma()));
-    }
+    BZDB.set("gamma",
+             TextUtils::format("%f", RENDERER.getGamma()));
 
     BZDB.set("quality", configQualityValues[RENDERER.useQuality()]);
     if (!BZDB.isSet("_window") && display->getResolution() != -1 &&
@@ -1270,13 +1267,9 @@ int         main(int argc, char** argv)
             BZDB.set("fakecursor", "1");
     }
 
-    // set gamma if set in resources and we have gamma control
+    // set gamma if set in resources
     if (BZDB.isSet("gamma"))
-    {
-        if (pmainWindow->getWindow()->hasGammaControl())
-            pmainWindow->getWindow()->setGamma
-            ((float)atof(BZDB.get("gamma").c_str()));
-    }
+        RENDERER.setGamma((float)atof(BZDB.get("gamma").c_str()));
 
     // set the scene renderer's window
     RENDERER.setWindow(pmainWindow);

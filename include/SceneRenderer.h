@@ -130,6 +130,17 @@ public:
 
     void      setTimeOfDay(double julianDay);
 
+    // gamma / brightness correction applied to the scene lighting.
+    // This is implemented in the renderer (rather than relying on the
+    // platform window's gamma ramp) because SDL2's gamma ramp is broken
+    // on Wayland and has no visible effect under XWayland compositing.
+    void      setGamma(float gamma);
+    float     getGamma() const;
+
+    // re-apply gamma scaling to the cached base sun/ambient colors.
+    // cheaper than setTimeOfDay(): skips celestial position math.
+    void      applyGamma();
+
     const GLfloat*    getSunColor() const;
     const GLfloat*    getSunScaledColor() const;
     GLfloat       getSunBrightness() const;
@@ -223,6 +234,12 @@ private:
     GLfloat       celestialTransform[4][4];
     GLfloat       sunBrightness;
     GLfloat       ambientColor[4];
+    float         gamma;
+    double        lastJulianDay;
+    // base (gamma==1) lighting colors captured in setTimeOfDay() so that
+    // applyGamma() can rescale without recomputing celestial positions.
+    GLfloat       baseSunColor[4];
+    GLfloat       baseAmbientColor[4];
     SceneDatabase*    scene;
     BackgroundRenderer*   background;
     int           triangleCount;

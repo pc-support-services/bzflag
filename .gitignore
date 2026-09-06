@@ -131,6 +131,13 @@ Icon?
 ehthumbs.db
 Thumbs.db
 
+# Local build artifacts and scratch files
+*.deb
+.backup-pre-opt/
+history.md
+package/bzflag-deb/
+package/bzflag-2.4.31-1_arm64.deb
+
 # Xcode cruft
 /Xcode/BZFlag.xcodeproj/xcuserdata
 /Xcode/BZFlag.xcodeproj/project.xcworkspace
