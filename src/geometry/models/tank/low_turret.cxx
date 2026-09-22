@@ -15,8 +15,7 @@ using namespace TankGeometryUtils;
 
 int TankGeometryUtils::buildLowTurret( void )
 {
-    glShadeModel(GL_FLAT);
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(0.991228f, 0.000000f, -0.132164f);
     doTexCoord2f(0.107f, -0.009f);
     doVertex3f(1.480f, -0.516f, 1.040f);
@@ -36,9 +35,8 @@ int TankGeometryUtils::buildLowTurret( void )
     doVertex3f(-0.456f, -1.060f, 1.040f);
     doTexCoord2f(0.996f, -0.132f);
     doVertex3f(-0.456f, 1.080f, 1.040f);
-    glEnd(); // 6 tris
-    glShadeModel(GL_SMOOTH);
-    glBegin(GL_TRIANGLE_FAN);
+
+    startRun(GL_TRIANGLE_FAN, GL_SMOOTH);
     doNormal3f(0.183504f, -0.940289f, 0.286676f);
     doTexCoord2f(0.559f, 0.339f);
     doVertex3f(-0.456f, -1.060f, 1.040f);
@@ -50,8 +48,8 @@ int TankGeometryUtils::buildLowTurret( void )
     doVertex3f(1.580f, -0.434f, 1.790f);
     doTexCoord2f(0.866f, 0.402f);
     doVertex3f(-1.370f, -0.765f, 2.050f);
-    glEnd(); // 2 tris
-    glBegin(GL_TRIANGLE_FAN);
+
+    startRun(GL_TRIANGLE_FAN, GL_SMOOTH);
     doNormal3f(0.235235f, 0.954665f, 0.182426f);
     doTexCoord2f(0.996f, -0.132f);
     doVertex3f(-0.456f, 1.080f, 1.040f);
@@ -63,7 +61,6 @@ int TankGeometryUtils::buildLowTurret( void )
     doVertex3f(1.580f, 0.435f, 1.790f);
     doTexCoord2f(0.617f, -0.559f);
     doVertex3f(1.480f, 0.516f, 1.040f);
-    glEnd(); // 2 tris
 
     return 10;
 }

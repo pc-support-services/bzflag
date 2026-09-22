@@ -270,7 +270,17 @@ void OpenGLTexture::setFilter(Filter _filter)
     if (OpenGLGState::hasAnisotropicFiltering)
     {
         GLint aniso = BZDB.evalInt("aniso");
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
+        // clamp to the maximum the driver supports; setting a larger
+        // value is a GL error on strict drivers
+        if (aniso > 1)
+        {
+            GLfloat maxAniso = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+            if (aniso > (GLint)maxAniso)
+                aniso = (GLint)maxAniso;
+        }
+        if (aniso > 1)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
     }
     glBindTexture(GL_TEXTURE_2D, binding);
 }

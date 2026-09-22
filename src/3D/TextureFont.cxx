@@ -74,8 +74,10 @@ void TextureFont::preLoadLists()
     }
     logDebugMessage(4,"Font %s (face %s) has texture ID %d\n", texture.c_str(), faceName.c_str(), textureID);
 
-    // fonts are usually pixel aligned
+    // fonts are usually pixel aligned, but anisotropic filtering keeps
+    // text crisp when HUD panels are drawn at an angle or scaled
     tm.setTextureFilter(textureID, OpenGLTexture::Nearest);
+    tm.setTextureFilterAnisotropy(textureID);
 
     for (int i = 0; i < numberOfCharacters; i++)
     {

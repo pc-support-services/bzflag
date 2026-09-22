@@ -13,6 +13,11 @@
 // interface header
 #include "TankSceneNode.h"
 
+// implementation headers
+#include "TankLightingShader.h"
+#include "ShadowMapper.h"
+#include "ShadowMapFBO.h"
+
 // system headers
 #include <math.h>
 #include <string.h>
@@ -966,6 +971,46 @@ void TankSceneNode::TankRenderNode::render()
         glEnable(GL_NORMALIZE);
     }
 
+    // GLSL per-pixel lighting path (Tier 2 stage B). The shader reads the
+    // fixed-function light/material/fog uniforms, so all the state below
+    // still applies. Shadows stay fixed-function (they draw black quads).
+    const bool shaderLighting = !isShadow && !isRadar &&
+                                TankLightingShader::instance().isActive();
+    if (shaderLighting)
+    {
+        // mirror the enabled-light set: bit 0 = sun (GL_LIGHT0), bits
+        // 1..n = dynamic lights (GL_LIGHT1..). Lights culled per-tank by
+        // disableLights() are re-enabled in gl state before this point is
+        // reached for other tanks, so query fresh each render.
+        int mask = 0;
+        if (BZDBCache::lighting)
+        {
+            // the sun/moon (GL_LIGHT0) is enabled whenever getSunDirection()
+            // returns non-NULL (sun or moon above horizon); dynamic lights
+            // start at GL_LIGHT1. Lights disabled per-tank via
+            // disableLights() don't reach this point for the tank that
+            // disabled them (shader on == !isShadow, same condition), and
+            // reenableLights() restores them for the next tank.
+            if (RENDERER.getSunDirection() != NULL)
+                mask |= 1;      // GL_LIGHT0
+            const int count = RENDERER.getNumLights();
+            for (int i = 0; i < count; i++)
+                mask |= (1 << (i + 1));
+        }
+        TankLightingShader::instance().setLightMask(mask);
+        // stage C: sun shadow map (bound by the shadow pass earlier this
+        // frame; the mapper's active flag tracks whether the depth pass ran)
+        const ShadowMapper& shadowMapper = ShadowMapper::instance();
+        if (shadowMapper.isActive())
+            TankLightingShader::instance().setShadowMap(
+                true, ShadowMapFBO::instance().getDepthTexture(),
+                shadowMapper.getEyeToSunClip(),
+                ShadowMapFBO::instance().getSize());
+        else
+            TankLightingShader::instance().setShadowMap(false, 0, NULL, 0);
+        TankLightingShader::instance().useShader(true);
+    }
+
     // disable the dynamic lights, if it might help
     const bool switchLights = BZDBCache::lighting &&
                               !isShadow && (drawLOD == HighTankLOD);
@@ -1036,6 +1081,10 @@ void TankSceneNode::TankRenderNode::render()
     // re-enable the dynamic lights
     if (switchLights)
         RENDERER.reenableLights();
+
+    // back to the fixed-function pipeline
+    if (shaderLighting)
+        TankLightingShader::instance().useShader(false);
 
     if (sceneNode->useDimensions)
         glDisable(GL_NORMALIZE);
@@ -1238,17 +1287,13 @@ void TankSceneNode::TankRenderNode::renderPart(TankPart part)
     if (!isShadow)
         setupPartColor(part);
 
-    // get the list
-    GLuint list;
-    TankShadow shadow = isShadow ? ShadowOn : ShadowOff;
-    list = TankGeometryMgr::getPartList(shadow, part, drawSize, drawLOD);
-
-    // draw the part
-    glCallList(list);
+    // draw the part from its VBO batch
+    TankGeometryMgr::drawPart(isShadow ? ShadowOn : ShadowOff,
+                              part, drawSize, drawLOD);
 
     // add to the triangle count
     addTriangleCount(TankGeometryMgr::getPartTriangleCount(
-                         shadow, part, drawSize, drawLOD));
+                         isShadow ? ShadowOn : ShadowOff, part, drawSize, drawLOD));
 
     // draw the lights on the turret
     if ((part == Turret) && !isExploding && !isShadow)

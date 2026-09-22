@@ -55,7 +55,8 @@ libGeometry_la_LIBADD =	\
 	models/tank/medium_body.lo	\
 	models/tank/medium_ltread.lo	\
 	models/tank/medium_rtread.lo	\
-	models/tank/medium_turret.lo
+	models/tank/medium_turret.lo	\
+	../ogl/libGLKit.la
 
 EXTRA_DIST = \
 	README

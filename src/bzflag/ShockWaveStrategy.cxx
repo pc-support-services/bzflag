@@ -15,6 +15,7 @@
 
 /* common implementation headers */
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 /* local implementation headers */
 #include "LocalPlayer.h"
@@ -140,14 +141,15 @@ void ShockWaveStrategy::radarRender() const
     // draw circle of current radius
     static const int sides = 20;
     const float* shotPos = getPath().getPosition();
-    glBegin(GL_LINE_LOOP);
+    static GLBatch batch;
+    batch.begin(GL_LINE_LOOP);
     for (int i = 0; i < sides; i++)
     {
         const float angle = (float)(2.0 * M_PI * double(i) / double(sides));
-        glVertex2f(shotPos[0] + radius * cosf(angle),
-                   shotPos[1] + radius * sinf(angle));
+        batch.vertex2f(shotPos[0] + radius * cosf(angle),
+                       shotPos[1] + radius * sinf(angle));
     }
-    glEnd();
+    batch.end();
 }
 
 

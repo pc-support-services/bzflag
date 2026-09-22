@@ -15,8 +15,7 @@ using namespace TankGeometryUtils;
 
 int TankGeometryUtils::buildMedBody ( void )
 {
-    glShadeModel(GL_FLAT);
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(0.997647f, 0.000000f, 0.068567f);
     doTexCoord2f(1.240f, 2.230f);
     doVertex3f(2.610f, -0.877f, 0.408f);
@@ -56,7 +55,6 @@ int TankGeometryUtils::buildMedBody ( void )
     doVertex3f(2.610f, -0.877f, 0.408f);
     doTexCoord2f(0.700f, 1.970f);
     doVertex3f(2.610f, 0.877f, 0.408f);
-    glEnd();
 
     return 14;
 }

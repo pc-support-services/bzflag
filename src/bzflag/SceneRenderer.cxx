@@ -19,6 +19,10 @@
 // interface header
 #include "SceneRenderer.h"
 
+// implementation headers
+#include "ShadowMapper.h"
+#include "TankLightingShader.h"
+
 /* common implementation headers */
 #include "SceneDatabase.h"
 #include "MainWindow.h"
@@ -947,6 +951,12 @@ void SceneRenderer::renderScene(bool UNUSED(_lastFrame), bool UNUSED(_sameFrame)
         theSun.enableLight(SunLight, true);
     }
 
+    // stage C: sun shadow depth pass (renders into its own FBO; restores
+    // camera state). Must run after executeView() so the camera transform
+    // is on the stack for the restore, and before tanks are drawn.
+    ShadowMapper::instance().renderShadowPass(*this);
+    ShadowMapper::instance().updateEyeToSunClip(frustum);
+
     // set scissor
     glPushAttrib(GL_SCISSOR_BIT);
     glScissor(window->getOriginX(), window->getOriginY() + window->getHeight() - window->getViewHeight(),
@@ -1160,7 +1170,7 @@ static bool setupMapFog()
         return false;
     }
     RENDERER.setFogActive(true);
-    GLenum fogMode = GL_EXP;
+    GLenum fogMode = GL_EXP2;
     GLfloat fogDensity = 0.001f;
     GLfloat fogStart = 0.5f * BZDBCache::worldSize;
     GLfloat fogEnd = BZDBCache::worldSize;
@@ -1175,13 +1185,17 @@ static bool setupMapFog()
     else if (modeStr == "exp2")
         fogMode = GL_EXP2;
     else
-        fogMode = GL_EXP;
+        fogMode = GL_EXP2;   // default: exp2 blends smoother than exp
     fogDensity = BZDB.eval(StateDatabase::BZDB_FOGDENSITY);
     fogStart = BZDB.eval(StateDatabase::BZDB_FOGSTART);
     fogEnd = BZDB.eval(StateDatabase::BZDB_FOGEND);
     if (!parseColorString(BZDB.get(StateDatabase::BZDB_FOGCOLOR), fogColor))
     {
-        fogColor[0] = fogColor[1] = fogColor[2] = 0.1f;
+        // sky-tinted fallback instead of dark grey: fog now fades into
+        // the horizon rather than a visible grey wall
+        fogColor[0] = 0.55f;
+        fogColor[1] = 0.65f;
+        fogColor[2] = 0.78f;
         fogColor[3] = 0.0f; // has no effect
     }
     if (BZDB.evalInt("fogEffect") >= 1)

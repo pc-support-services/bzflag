@@ -83,6 +83,7 @@ private:
     float       range;
     double      decay;
     GLfloat     teamColor[3];
+    GLfloat     colorScratch[4]; // last color set via setTankColor()
     bool        smooth;
     bool        jammed;
     bool        useTankModels;

@@ -29,7 +29,7 @@ void OpenGLFramebuffer::initFramebuffer()
 
     glGenRenderbuffers(1, &renderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
-    glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaaLevel, GL_RGB,
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaaLevel, GL_RGBA,
                                      width, height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                               GL_RENDERBUFFER, renderbuffer);

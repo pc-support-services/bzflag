@@ -17,6 +17,7 @@
 #include "BZDBCache.h"
 #include "TextureManager.h"
 #include "Intersect.h"
+#include "GLBatch.h"
 
 /* local implementation headers */
 #include "LocalPlayer.h"
@@ -481,26 +482,27 @@ void GuidedMissileStrategy::radarRender() const
         dir[0] = vel[0] * d * shotTailLength * length;
         dir[1] = vel[1] * d * shotTailLength * length;
         dir[2] = vel[2] * d * shotTailLength * length;
-        glBegin(GL_LINES);
-        glVertex2fv(orig);
+        static GLBatch batch;
+        batch.begin(GL_LINES);
+        batch.vertex2fv(orig);
         if (BZDBCache::leadingShotLine == 1)   //leading
         {
-            glVertex2f(orig[0] + dir[0], orig[1] + dir[1]);
-            glEnd();
+            batch.vertex2f(orig[0] + dir[0], orig[1] + dir[1]);
+            batch.end();
         }
         else if (BZDBCache::leadingShotLine == 0)     //lagging
         {
-            glVertex2f(orig[0] - dir[0], orig[1] - dir[1]);
-            glEnd();
+            batch.vertex2f(orig[0] - dir[0], orig[1] - dir[1]);
+            batch.end();
         }
         else if (BZDBCache::leadingShotLine == 2)     //both
         {
-            glVertex2f(orig[0] + dir[0], orig[1] + dir[1]);
-            glEnd();
-            glBegin(GL_LINES);
-            glVertex2fv(orig);
-            glVertex2f(orig[0] - dir[0], orig[1] - dir[1]);
-            glEnd();
+            batch.vertex2f(orig[0] + dir[0], orig[1] + dir[1]);
+            batch.end();
+            batch.begin(GL_LINES);
+            batch.vertex2fv(orig);
+            batch.vertex2f(orig[0] - dir[0], orig[1] - dir[1]);
+            batch.end();
         }
 
         // draw a "bright reddish" missle tip
@@ -508,29 +510,30 @@ void GuidedMissileStrategy::radarRender() const
         {
             glColor3f(1.0f, 0.75f, 0.75f);
             glPointSize((float)size);
-            glBegin(GL_POINTS);
-            glVertex2f(orig[0], orig[1]);
-            glEnd();
+            batch.begin(GL_POINTS);
+            batch.vertex2f(orig[0], orig[1]);
+            batch.end();
             glPointSize(1.0f);
         }
     }
     else
     {
+        static GLBatch batch;
         if (size > 0)
         {
             // draw a sized missle
             glPointSize((float)size);
-            glBegin(GL_POINTS);
-            glVertex2fv(orig);
-            glEnd();
+            batch.begin(GL_POINTS);
+            batch.vertex2fv(orig);
+            batch.end();
             glPointSize(1.0f);
         }
         else
         {
             // draw the tiny missle
-            glBegin(GL_POINTS);
-            glVertex2fv(orig);
-            glEnd();
+            batch.begin(GL_POINTS);
+            batch.vertex2fv(orig);
+            batch.end();
         }
     }
 }

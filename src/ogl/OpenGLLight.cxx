@@ -302,7 +302,11 @@ void OpenGLLight::genLight(GLenum light) const
 {
     glLightfv(light, GL_POSITION, pos);
     glLightfv(light, GL_DIFFUSE, color);
-    glLightfv(light, GL_SPECULAR, color);
+    // specular highlights at half strength: full-strength specular on
+    // every light blew out tank and wall surfaces to a plastic shine
+    const GLfloat spec[4] = { color[0] * 0.5f, color[1] * 0.5f,
+                              color[2] * 0.5f, color[3] };
+    glLightfv(light, GL_SPECULAR, spec);
     glLighti(light, GL_SPOT_EXPONENT, 0);
     glLightf(light, GL_CONSTANT_ATTENUATION, atten[0]);
     glLightf(light, GL_LINEAR_ATTENUATION, atten[1]);
