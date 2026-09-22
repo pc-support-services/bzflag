@@ -26,8 +26,7 @@ GLBatch::GLBatch() :
     vsize(3),
     csize(0),
     useTex(false),
-    useNorm(false),
-    externalColor(false)
+    useNorm(false)
 {
     curColor[0] = curColor[1] = curColor[2] = curColor[3] = 1.0f;
     curTex[0] = curTex[1] = 0.0f;
@@ -51,12 +50,7 @@ void GLBatch::begin(GLenum _mode)
     useTex = false;
     useNorm = false;
     // inherit the current GL color (sites set glColor* before drawing).
-    // When the glColor* macro routed through this batch already, the
-    // GL current color was never updated - keep curColor instead of
-    // clobbering it with the stale GL value.
-    if (!externalColor)
-        glGetFloatv(GL_CURRENT_COLOR, curColor);
-    externalColor = false;
+    glGetFloatv(GL_CURRENT_COLOR, curColor);
     memcpy(savedColor, curColor, sizeof(savedColor));
     glGetFloatv(GL_CURRENT_TEXTURE_COORDS, savedTex);
     memcpy(curTex, savedTex, sizeof(curTex));
@@ -140,7 +134,6 @@ void GLBatch::vertex3fv(const GLfloat v[3])
 void GLBatch::color3f(GLfloat r, GLfloat g, GLfloat b)
 {
     useColors(3);
-    externalColor = true;
     curColor[0] = r;
     curColor[1] = g;
     curColor[2] = b;
@@ -156,7 +149,6 @@ void GLBatch::color3fv(const GLfloat c[3])
 void GLBatch::color4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
     useColors(4);
-    externalColor = true;
     curColor[0] = r;
     curColor[1] = g;
     curColor[2] = b;
