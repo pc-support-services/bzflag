@@ -35,7 +35,7 @@ extern int __beginendCount;
     std::cerr << "ERROR: glBegin called on " << __FILE__ << ':' << __LINE__ << " without calling glEnd before\n"; \
     assert(__beginendCount==0 && "glBegin called without glEnd"); \
   } \
-  bzglBegin(_value);\
+  glBegin(_value);\
 }
 #define glEnd() {\
   if (__beginendCount==0) { \
@@ -44,62 +44,12 @@ extern int __beginendCount;
   } else {\
     __beginendCount--;\
   } \
-  bzglEnd();\
+  glEnd();\
 }
 #endif
 
-/* Tier 3: redirect every remaining immediate-mode call through the
- * GLBatch accumulator (bzfgl-batch.cxx). While a display list is being
- * built the macros pass through to the real GL calls, because
- * glDrawArrays cannot be compiled into a display list (fonts, sky,
- * rain, ground all rely on display-list capture).
+/* TglGenTextures() should never return 0
  */
-extern void  bzglBegin(GLenum mode);
-extern void  bzglEnd();
-extern void  bzglVertex2f(GLfloat x, GLfloat y);
-extern void  bzglVertex2fv(const GLfloat v[2]);
-extern void  bzglVertex2i(GLint x, GLint y);
-extern void  bzglVertex3f(GLfloat x, GLfloat y, GLfloat z);
-extern void  bzglVertex3fv(const GLfloat v[3]);
-extern void  bzglColor3f(GLfloat r, GLfloat g, GLfloat b);
-extern void  bzglColor3fv(const GLfloat c[3]);
-extern void  bzglColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
-extern void  bzglColor4fv(const GLfloat c[4]);
-extern void  bzglTexCoord2f(GLfloat s, GLfloat t);
-extern void  bzglTexCoord2fv(const GLfloat t[2]);
-extern void  bzglNormal3f(GLfloat nx, GLfloat ny, GLfloat nz);
-extern void  bzglNormal3fv(const GLfloat n[3]);
-extern void  bzglRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
-extern void  bzglRecti(GLint x1, GLint y1, GLint x2, GLint y2);
-extern void  bzglNewList(GLuint list, GLenum mode);
-extern void  bzglEndList();
-extern bool  bzGLBatchBuildingList();
-extern void  bzGLBatchSetBuildingList(bool building);
-
-#ifndef DEBUG
-#define glBegin(_value)         bzglBegin(_value)
-#define glEnd()                 bzglEnd()
-#endif
-#define glVertex2f(x, y)        bzglVertex2f((x), (y))
-#define glVertex2fv(v)          bzglVertex2fv(v)
-#define glVertex2i(x, y)        bzglVertex2i((x), (y))
-#define glVertex3f(x, y, z)     bzglVertex3f((x), (y), (z))
-#define glVertex3fv(v)          bzglVertex3fv(v)
-#define glColor3f(r, g, b)      bzglColor3f((r), (g), (b))
-#define glColor3fv(c)           bzglColor3fv(c)
-#define glColor4f(r, g, b, a)   bzglColor4f((r), (g), (b), (a))
-#define glColor4fv(c)           bzglColor4fv(c)
-#define glTexCoord2f(s, t)      bzglTexCoord2f((s), (t))
-#define glTexCoord2fv(t)        bzglTexCoord2fv(t)
-#define glNormal3f(x, y, z)     bzglNormal3f((x), (y), (z))
-#define glNormal3fv(n)          bzglNormal3fv(n)
-#define glRectf(x1, y1, x2, y2) bzglRectf((x1), (y1), (x2), (y2))
-#define glRecti(x1, y1, x2, y2) bzglRecti((x1), (y1), (x2), (y2))
-#define glNewList(list, mode)   bzglNewList((list), (mode))
-#define glEndList()             bzglEndList()
-
-
-// glGenTextures() should never return 0
 #define INVALID_GL_TEXTURE_ID ((GLuint) 0)
 
 // glGenLists() will only return 0 for errors
@@ -112,6 +62,7 @@ extern void  bzGLBatchSetBuildingList(bool building);
  */
 //#define DEBUG_GL_MATRIX_STACKS
 #ifdef DEBUG
+#  define glNewList(list,mode)          bzNewList((list), (mode))
 #  define glGenLists(count)         bzGenLists((count))
 #  define glGenTextures(count, textures)    bzGenTextures((count), (textures))
 #  ifdef DEBUG_GL_MATRIX_STACKS

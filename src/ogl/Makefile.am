@@ -15,7 +15,6 @@ MAINTAINERCLEANFILES = \
 libGLKit_la_LDFLAGS = -static
 libGLKit_la_SOURCES =			\
 	GLBatch.cxx			\
-	bzfgl-batch.cxx			\
 	OpenGLFramebuffer.cxx		\
 	OpenGLGState.cxx		\
 	OpenGLLight.cxx			\

@@ -58,7 +58,6 @@ private:
 private:
     GLenum mode;
     bool open;
-    bool externalColor;   // a color*() call happened since the last begin()
     int vsize;            // 2 or 3 components per vertex
     int csize;            // 3 or 4 components per color (0 = no colors)
     bool useTex;

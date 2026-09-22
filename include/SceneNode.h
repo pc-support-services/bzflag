@@ -44,10 +44,10 @@
 #define __stdcall
 #endif
 
-#define myColor3f(r, g, b)  SceneNode::applyColor3f(r, g, b)
-#define myColor4f(r, g, b, a)   SceneNode::applyColor4f(r, g, b, a)
-#define myColor3fv(rgb)     SceneNode::applyColor3fv(rgb)
-#define myColor4fv(rgba)    SceneNode::applyColor4fv(rgba)
+#define myColor3f(r, g, b)  SceneNode::glColor3f(r, g, b)
+#define myColor4f(r, g, b, a)   SceneNode::glColor4f(r, g, b, a)
+#define myColor3fv(rgb)     SceneNode::glColor3fv(rgb)
+#define myColor4fv(rgba)    SceneNode::glColor4fv(rgba)
 #define myStipple(alpha)    SceneNode::setStipple(alpha)
 
 class ViewFrustum;
@@ -92,37 +92,25 @@ public:
 
 
     static void     setColorOverride(bool = true);
-    // the glColor* macros from bzfgl.h must not leak into the rest of the
-    // translation unit (they would rewrite the ::glColor calls below into
-    // bzgl* calls and lose the colorOverride gate) - save and restore them
-#pragma push_macro("glColor3f")
-#pragma push_macro("glColor4f")
-#pragma push_macro("glColor3fv")
-#pragma push_macro("glColor4fv")
-#undef glColor3f
-#undef glColor4f
-#undef glColor3fv
-#undef glColor4fv
-    static void     applyColor3f(GLfloat r, GLfloat g, GLfloat b)
+    static void     glColor3f(GLfloat r, GLfloat g, GLfloat b)
     {
         if (!colorOverride) ::glColor3f(r, g, b);
     };
-    static void     applyColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+
+    static void     glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
     {
         if (!colorOverride) ::glColor4f(r, g, b, a);
     };
-    static void     applyColor3fv(const GLfloat* rgb)
+
+    static void     glColor3fv(const GLfloat* rgb)
     {
         if (!colorOverride) ::glColor3fv(rgb);
     };
-    static void     applyColor4fv(const GLfloat* rgba)
+
+    static void     glColor4fv(const GLfloat* rgba)
     {
         if (!colorOverride) ::glColor4fv(rgba);
     };
-#pragma pop_macro("glColor4fv")
-#pragma pop_macro("glColor3fv")
-#pragma pop_macro("glColor4f")
-#pragma pop_macro("glColor3f")
 
     static void     setStipple(GLfloat alpha)
     {
