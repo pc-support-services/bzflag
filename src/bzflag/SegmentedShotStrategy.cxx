@@ -22,6 +22,7 @@
 #include "BZDBCache.h"
 #include "WallObstacle.h"
 #include "mathRoutine.h"
+#include "GLBatch.h"
 
 /* local implementation headers */
 #include "sound.h"
@@ -350,26 +351,27 @@ void  SegmentedShotStrategy::radarRender() const
         dir[1] *= d;
         dir[2] *= d;
 
-        glBegin(GL_LINES);
-        glVertex2fv(orig);
+        static GLBatch batch;
+        batch.begin(GL_LINES);
+        batch.vertex2fv(orig);
         if (BZDBCache::leadingShotLine == 0)   //lagging
         {
-            glVertex2f(orig[0] - dir[0], orig[1] - dir[1]);
-            glEnd();
+            batch.vertex2f(orig[0] - dir[0], orig[1] - dir[1]);
+            batch.end();
         }
         else if (BZDBCache::leadingShotLine == 2)     //both
         {
-            glVertex2f(orig[0] + dir[0], orig[1] + dir[1]);
-            glEnd();
-            glBegin(GL_LINES);
-            glVertex2fv(orig);
-            glVertex2f(orig[0] - dir[0], orig[1] - dir[1]);
-            glEnd();
+            batch.vertex2f(orig[0] + dir[0], orig[1] + dir[1]);
+            batch.end();
+            batch.begin(GL_LINES);
+            batch.vertex2fv(orig);
+            batch.vertex2f(orig[0] - dir[0], orig[1] - dir[1]);
+            batch.end();
         }
         else     //leading
         {
-            glVertex2f(orig[0] + dir[0], orig[1] + dir[1]);
-            glEnd();
+            batch.vertex2f(orig[0] + dir[0], orig[1] + dir[1]);
+            batch.end();
         }
 
         // draw a "bright" bullet tip
@@ -377,9 +379,9 @@ void  SegmentedShotStrategy::radarRender() const
         {
             glColor3f(0.75, 0.75, 0.75);
             glPointSize((float)size);
-            glBegin(GL_POINTS);
-            glVertex2f(orig[0], orig[1]);
-            glEnd();
+            batch.begin(GL_POINTS);
+            batch.vertex2f(orig[0], orig[1]);
+            batch.end();
             glPointSize(1.0f);
         }
     }
@@ -389,18 +391,20 @@ void  SegmentedShotStrategy::radarRender() const
         {
             // draw a sized bullet
             glPointSize((float)size);
-            glBegin(GL_POINTS);
-            glVertex2fv(orig);
-            glEnd();
+            static GLBatch batch;
+            batch.begin(GL_POINTS);
+            batch.vertex2fv(orig);
+            batch.end();
             glPointSize(1.0f);
 
         }
         else
         {
             // draw the tiny little bullet
-            glBegin(GL_POINTS);
-            glVertex2fv(orig);
-            glEnd();
+            static GLBatch batch;
+            batch.begin(GL_POINTS);
+            batch.vertex2fv(orig);
+            batch.end();
         }
     }
 
@@ -733,17 +737,18 @@ void  ThiefStrategy::radarRender() const
     // draw all segments
     const std::vector<ShotPathSegment>& segmts = getSegments();
     const int numSegments = segmts.size();
-    glBegin(GL_LINES);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
     for (int i = 0; i < numSegments; i++)
     {
         const ShotPathSegment& segm = segmts[i];
         const float* origin = segm.ray.getOrigin();
         const float* direction = segm.ray.getDirection();
         const float dt = float(segm.end - segm.start);
-        glVertex2fv(origin);
-        glVertex2f(origin[0] + dt * direction[0], origin[1] + dt * direction[1]);
+        batch.vertex2fv(origin);
+        batch.vertex2f(origin[0] + dt * direction[0], origin[1] + dt * direction[1]);
     }
-    glEnd();
+    batch.end();
 }
 
 bool  ThiefStrategy::isStoppedByHit() const
@@ -906,17 +911,18 @@ void  LaserStrategy::radarRender() const
     // draw all segments
     const std::vector<ShotPathSegment>& segmts = getSegments();
     const int numSegments = segmts.size();
-    glBegin(GL_LINES);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
     for (int i = 0; i < numSegments; i++)
     {
         const ShotPathSegment& segm = segmts[i];
         const float* origin = segm.ray.getOrigin();
         const float* direction = segm.ray.getDirection();
         const float dt = float(segm.end - segm.start);
-        glVertex2fv(origin);
-        glVertex2f(origin[0] + dt * direction[0], origin[1] + dt * direction[1]);
+        batch.vertex2fv(origin);
+        batch.vertex2f(origin[0] + dt * direction[0], origin[1] + dt * direction[1]);
     }
-    glEnd();
+    batch.end();
 }
 
 bool  LaserStrategy::isStoppedByHit() const

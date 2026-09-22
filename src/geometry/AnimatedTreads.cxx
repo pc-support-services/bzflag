@@ -112,7 +112,6 @@ static int buildCasing(float Yoffset)
     const float yLeft = Yoffset + (0.5f * casingWidth);
     const float yRight = Yoffset - (0.5f * casingWidth);
 
-    glShadeModel(GL_FLAT);
     {
         const float xc = wheelSpacing * 1.5f;
         const float zb = treadThickness;
@@ -123,7 +122,7 @@ static int buildCasing(float Yoffset)
         // the left and right quad surface
         {
             // the right side
-            glBegin(GL_TRIANGLE_STRIP);
+            startRun(GL_TRIANGLE_STRIP, GL_FLAT);
             doNormal3f(0.0f, -1.0f, 0.0f);
             doTexCoord2f(-tx, -ty);
             doVertex3f(-xc, yRight, zb);
@@ -133,9 +132,8 @@ static int buildCasing(float Yoffset)
             doVertex3f(-xc, yRight, zt);
             doTexCoord2f(+tx, +ty);
             doVertex3f(+xc, yRight, zt);
-            glEnd();
             // the left side
-            glBegin(GL_TRIANGLE_STRIP);
+            startRun(GL_TRIANGLE_STRIP, GL_FLAT);
             doNormal3f(0.0f, +1.0f, 0.0f);
             doTexCoord2f(-tx, -ty);
             doVertex3f(+xc, yLeft, zb);
@@ -145,10 +143,8 @@ static int buildCasing(float Yoffset)
             doVertex3f(+xc, yLeft, zt);
             doTexCoord2f(+tx, +ty);
             doVertex3f(-xc, yLeft, zt);
-            glEnd();
         }
     }
-    glShadeModel(GL_SMOOTH);
 
     return 4;
 }
@@ -179,7 +175,7 @@ static int buildTread(float Yoffset, int divisions)
     const float ty4 = 1.0f;
 
     // the outside of the tread
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_SMOOTH);
     {
         // first curve
         for (i = 0; i < ((divisions / 2) + 1); i++)
@@ -228,10 +224,9 @@ static int buildTread(float Yoffset, int divisions)
         doTexCoord2f(tx4, ty0);
         doVertex3f(x, yLeft, z);
     }
-    glEnd();
 
     // the inside of the tread
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_SMOOTH);
     {
         // first curve
         for (i = 0; i < ((divisions / 2) + 1); i++)
@@ -280,13 +275,11 @@ static int buildTread(float Yoffset, int divisions)
         doTexCoord2f(tx4, ty2);
         doVertex3f(x, yRight, z);
     }
-    glEnd();
 
-    glShadeModel(GL_FLAT);
     {
         // the right edge
         doNormal3f(0.0f, -1.0f, 0.0f);
-        glBegin(GL_TRIANGLE_STRIP);
+        startRun(GL_TRIANGLE_STRIP, GL_FLAT);
         {
             // first outside curve
             for (i = 0; i < ((divisions / 2) + 1); i++)
@@ -337,11 +330,10 @@ static int buildTread(float Yoffset, int divisions)
             z = 0.0f;
             doVertex3f(x, yRight, z);
         }
-        glEnd();
 
         // the left edge
         doNormal3f(0.0f, +1.0f, 0.0f);
-        glBegin(GL_TRIANGLE_STRIP);
+        startRun(GL_TRIANGLE_STRIP, GL_FLAT);
         {
             // first outside curve
             for (i = 0; i < ((divisions / 2) + 1); i++)
@@ -392,9 +384,7 @@ static int buildTread(float Yoffset, int divisions)
             z = treadThickness;
             doVertex3f(x, yLeft, z);
         }
-        glEnd();
     }
-    glShadeModel(GL_SMOOTH);
 
     return (2 * 4 * (divisions + 2));
 }
@@ -413,7 +403,7 @@ static int buildWheel(const float pos[3], float angle, int divisions)
 
     // the edge loop
     doNormal3f(0.0f, +1.0f, 0.0f);
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_SMOOTH);
     {
         for (i = 0; i < (divisions + 1); i++)
         {
@@ -433,14 +423,12 @@ static int buildWheel(const float pos[3], float angle, int divisions)
             doVertex3f(x, yLeft, z);
         }
     }
-    glEnd();
     tris += (2 * divisions);
 
-    glShadeModel(GL_FLAT);
     {
         // the left face
         doNormal3f(0.0f, +1.0f, 0.0f);
-        glBegin(GL_TRIANGLE_FAN);
+        startRun(GL_TRIANGLE_FAN, GL_FLAT);
         {
             for (i = 0; i < divisions; i++)
             {
@@ -456,12 +444,11 @@ static int buildWheel(const float pos[3], float angle, int divisions)
 
             }
         }
-        glEnd();
         tris += (divisions - 2);
 
         // the right face
         doNormal3f(0.0f, -1.0f, 0.0f);
-        glBegin(GL_TRIANGLE_FAN);
+        startRun(GL_TRIANGLE_FAN, GL_FLAT);
         {
             for (i = 0; i < divisions; i++)
             {
@@ -476,10 +463,8 @@ static int buildWheel(const float pos[3], float angle, int divisions)
                 doVertex3f(x, yRight, z);
             }
         }
-        glEnd();
         tris += (divisions - 2);
     }
-    glShadeModel(GL_SMOOTH);
 
     return tris;
 }
@@ -493,10 +478,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
 
     if (treadStyle == TankGeometryUtils::Covered)
     {
-        glShadeModel(GL_FLAT);
         {
             //draw the left tread cover
-            glBegin(GL_TRIANGLE_STRIP);
+            startRun(GL_TRIANGLE_STRIP, GL_FLAT);
             doNormal3f(0.984696f, 0.000000f, 0.174282f);
             doTexCoord2f(-0.193f, 0.727f);
             doVertex3f(3.000f, 0.875f, 0.770f);
@@ -571,10 +555,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(3.000f, 0.875f, 0.770f);
             doTexCoord2f(0.009f, 0.356f);
             doVertex3f(3.000f, 1.400f, 0.770f);
-            glEnd(); // 30 verts -> 28 tris
             tris += 28;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, -1.000000f, 0.000000f);
             doTexCoord2f(0.587f, 1.300f);
             doVertex3f(-2.740f, 0.875f, 0.628f);
@@ -586,10 +569,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(-1.460f, 0.875f, 1.400f);
             doTexCoord2f(0.759f, 1.070f);
             doVertex3f(-2.970f, 0.875f, 1.410f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, -1.000000f, 0.000000f);
             doTexCoord2f(-0.156f, 1.010f);
             doVertex3f(1.990f, 0.875f, 0.500f);
@@ -607,10 +589,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(-1.020f, 0.875f, 1.320f);
             doTexCoord2f(0.375f, 1.300f);
             doVertex3f(-1.620f, 0.875f, 0.500f);
-            glEnd(); // 8 verts -> 6 tris
             tris += 6;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, -1.000000f, 0.000000f);
             doTexCoord2f(-0.182f, 0.754f);
             doVertex3f(2.860f, 0.875f, 0.739f);
@@ -622,10 +603,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(2.860f, 0.875f, 0.956f);
             doTexCoord2f(-0.102f, 0.647f);
             doVertex3f(2.750f, 0.875f, 1.080f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, 1.000000f, 0.000000f);
             doTexCoord2f(0.917f, 0.700f);
             doVertex3f(-2.740f, 1.400f, 0.628f);
@@ -637,10 +617,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(-1.020f, 1.400f, 1.320f);
             doTexCoord2f(0.800f, 0.523f);
             doVertex3f(-1.620f, 1.400f, 0.500f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, 1.000000f, 0.000000f);
             doTexCoord2f(0.268f, 0.233f);
             doVertex3f(1.990f, 1.400f, 0.500f);
@@ -658,10 +637,9 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(2.860f, 1.400f, 0.739f);
             doTexCoord2f(0.123f, 0.220f);
             doVertex3f(2.790f, 1.400f,0.608f);
-            glEnd(); // 8 verts -> 6 tris
             tris += 6;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, 1.000000f, 0.000000f);
             doTexCoord2f(0.038f, 0.352f);
             doVertex3f(2.860f, 1.400f, 0.739f);
@@ -673,10 +651,8 @@ int TankGeometryUtils::buildHighLCasingAnim()
             doVertex3f(2.980f, 1.400f, 0.883f);
             doTexCoord2f(0.009f, 0.356f);
             doVertex3f(3.000f, 1.400f, 0.770f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
         }
-        glShadeModel(GL_SMOOTH);
     }
 
     return tris;
@@ -690,10 +666,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
 
     if (treadStyle == TankGeometryUtils::Covered)
     {
-        glShadeModel(GL_FLAT);
         {
             //draw the right tread cover
-            glBegin(GL_TRIANGLE_STRIP);
+            startRun(GL_TRIANGLE_STRIP, GL_FLAT);
             doNormal3f(0.984696f, 0.000000f, 0.174282f);
             doTexCoord2f(-0.295f, 0.041f);
             doVertex3f(3.000f, -1.400f, 0.770f);
@@ -768,10 +743,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(3.000f, -1.400f, 0.770f);
             doTexCoord2f(0.045f, -0.208f);
             doVertex3f(3.000f, -0.875f, 0.770f);
-            glEnd(); // 30 verts -> 28 tris
             tris += 28;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, -1.000000f, 0.000000f);
             doTexCoord2f(0.165f, 0.896f);
             doVertex3f(-2.740f, -1.400f, 0.628f);
@@ -783,10 +757,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(-1.460f, -1.400f, 1.400f);
             doTexCoord2f(0.419f, 0.757f);
             doVertex3f(-2.970f, -1.400f, 1.410f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, -1.000000f, 0.000000f);
             doTexCoord2f(-0.383f, 0.314f);
             doVertex3f(1.990f, -1.400f, 0.500f);
@@ -804,10 +777,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(-1.020f, -1.400f, 1.320f);
             doTexCoord2f(-0.026f, 0.803f);
             doVertex3f(-1.620f, -1.400f, 0.500f);
-            glEnd(); // 8 verts -> 6 tris
             tris += 6;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, -1.000000f, 0.000000f);
             doTexCoord2f(-0.296f, 0.070f);
             doVertex3f(2.860f, -1.400f, 0.739f);
@@ -819,10 +791,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(2.860f, -1.400f, 0.956f);
             doTexCoord2f(-0.179f, 0.008f);
             doVertex3f(2.750f, -1.400f, 1.080f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, 1.000000f, 0.000000f);
             doTexCoord2f(0.720f, 0.489f);
             doVertex3f(-2.740f, -0.875f, 0.628f);
@@ -834,10 +805,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(-1.020f, -0.875f, 1.320f);
             doTexCoord2f(0.690f, 0.279f);
             doVertex3f(-1.620f, -0.875f, 0.500f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, 1.000000f, 0.000000f);
             doTexCoord2f(0.332f, -0.209f);
             doVertex3f(1.990f, -0.875f, 0.500f);
@@ -855,10 +825,9 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(2.860f, -0.875f, 0.739f);
             doTexCoord2f(0.206f, -0.283f);
             doVertex3f(2.790f, -0.875f,0.608f);
-            glEnd(); // 8 verts -> 6 tris
             tris += 6;
 
-            glBegin(GL_TRIANGLE_FAN);
+            startRun(GL_TRIANGLE_FAN, GL_FLAT);
             doNormal3f(0.000000f, 1.000000f, 0.000000f);
             doTexCoord2f(0.073f, -0.200f);
             doVertex3f(2.860f, -0.875f, 0.739f);
@@ -870,10 +839,8 @@ int TankGeometryUtils::buildHighRCasingAnim()
             doVertex3f(2.980f, -0.875f, 0.883f);
             doTexCoord2f(0.045f, -0.208f);
             doVertex3f(3.000f, -0.875f, 0.770f);
-            glEnd(); // 5 verts -> 3 tris
             tris += 3;
         }
-        glShadeModel(GL_SMOOTH);
     }
 
     return tris;

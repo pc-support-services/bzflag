@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string>
+#include <vector>
+#include <string.h>
 
 // common implementation headers
 #include "SceneRenderer.h"
@@ -38,13 +40,14 @@ using namespace TankGeometryUtils;
 // Local Variables
 // ---------------
 
-// the display lists
-static GLuint displayLists[LastTankShadow][LastTankLOD]
-[LastTankSize][LastTankPart];
+// one interleaved VBO batch per (shadow, lod, size, part)
+static TankGeometryUtils::PartBatch
+    partBatches[TankGeometryEnums::LastTankShadow][TankGeometryEnums::LastTankLOD]
+               [TankGeometryEnums::LastTankSize][TankGeometryEnums::LastTankPart];
 
 // triangle counts
-static int partTriangles[LastTankShadow][LastTankLOD]
-[LastTankSize][LastTankPart];
+static int partTriangles[TankGeometryEnums::LastTankShadow][TankGeometryEnums::LastTankLOD]
+[TankGeometryEnums::LastTankSize][TankGeometryEnums::LastTankPart];
 
 // the scaling factors
 static GLfloat scaleFactors[LastTankSize][3] =
@@ -106,7 +109,7 @@ static void bzdbCallback(const std::string& str, void *data);
 
 void TankGeometryMgr::init()
 {
-    // initialize the lists to invalid
+    // initialize the batches to empty
     for (int shadow = 0; shadow < LastTankShadow; shadow++)
     {
         for (int lod = 0; lod < LastTankLOD; lod++)
@@ -115,7 +118,7 @@ void TankGeometryMgr::init()
             {
                 for (int part = 0; part < LastTankPart; part++)
                 {
-                    displayLists[shadow][lod][size][part] = INVALID_GL_LIST_ID;
+                    partBatches[shadow][lod][size][part] = PartBatch();
                     partTriangles[shadow][lod][size][part] = 0;
                 }
             }
@@ -156,7 +159,7 @@ void TankGeometryMgr::kill()
 
 void TankGeometryMgr::deleteLists()
 {
-    // delete the lists that have been aquired
+    // free all VBOs and clear the batches
     for (int shadow = 0; shadow < LastTankShadow; shadow++)
     {
         for (int lod = 0; lod < LastTankLOD; lod++)
@@ -165,12 +168,17 @@ void TankGeometryMgr::deleteLists()
             {
                 for (int part = 0; part < LastTankPart; part++)
                 {
-                    GLuint& list = displayLists[shadow][lod][size][part];
-                    if (list != INVALID_GL_LIST_ID)
+                    PartBatch& batch = partBatches[shadow][lod][size][part];
+                    if (batch.vbo != 0)
                     {
-                        glDeleteLists(list, 1);
-                        list = INVALID_GL_LIST_ID;
+                        bzDeleteTextures(1, &batch.vbo);
+                        batch.vbo = 0;
                     }
+                    batch.data.clear();
+                    batch.data.shrink_to_fit();
+                    batch.runs.clear();
+                    batch.runShade.clear();
+                    partTriangles[shadow][lod][size][part] = 0;
                 }
             }
         }
@@ -225,12 +233,21 @@ void TankGeometryMgr::buildLists()
 
                     if ((part == Barrel) && (lod == MedTankLOD))
                         continue;
-                    GLuint& list = displayLists[shadow][lod][size][part];
+                    PartBatch& batch = partBatches[shadow][lod][size][part];
                     int& count = partTriangles[shadow][lod][size][part];
 
-                    // get a new OpenGL display list
-                    list = glGenLists(1);
-                    glNewList(list, GL_COMPILE);
+                    // free any previous VBO, reset the batch
+                    if (batch.vbo != 0)
+                    {
+                        bzDeleteTextures(1, &batch.vbo);
+                        batch.vbo = 0;
+                    }
+                    batch.data.clear();
+                    batch.runs.clear();
+                    batch.runShade.clear();
+
+                    // capture the builder output into the batch
+                    beginCapture(&batch);
 
                     // setup the scale factor
                     currentScaleFactor = scaleFactors[size];
@@ -265,8 +282,18 @@ void TankGeometryMgr::buildLists()
                         }
                     }
 
-                    // end of the list
-                    glEndList();
+                    endCapture();
+
+                    // upload the interleaved vertex data to a VBO
+                    if (!batch.data.empty())
+                    {
+                        bzGenTextures(1, &batch.vbo);
+                        glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
+                        glBufferData(GL_ARRAY_BUFFER,
+                                     batch.data.size() * sizeof(GLfloat),
+                                     batch.data.data(), GL_STATIC_DRAW);
+                        glBindBuffer(GL_ARRAY_BUFFER, 0);
+                    }
 
                 } // part
             } // size
@@ -277,15 +304,43 @@ void TankGeometryMgr::buildLists()
 }
 
 
-GLuint TankGeometryMgr::getPartList(TankGeometryEnums::TankShadow shadow,
-                                    TankGeometryEnums::TankPart part,
-                                    TankGeometryEnums::TankSize size,
-                                    TankGeometryEnums::TankLOD lod)
+void TankGeometryMgr::drawPart(TankGeometryEnums::TankShadow shadow,
+                               TankGeometryEnums::TankPart part,
+                               TankGeometryEnums::TankSize size,
+                               TankGeometryEnums::TankLOD lod)
 {
     if ((part == Barrel) && (lod == MedTankLOD))
         lod = LowTankLOD;
 
-    return displayLists[shadow][lod][size][part];
+    const PartBatch& batch = partBatches[shadow][lod][size][part];
+    if (batch.vbo == 0 || batch.runs.empty())
+        return;
+
+    glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
+    const GLsizei stride = 8 * sizeof(GLfloat);
+    const GLbyte* base = NULL;
+    glVertexPointer(3, GL_FLOAT, stride, base + 0);
+    glNormalPointer(GL_FLOAT, stride, base + 3 * sizeof(GLfloat));
+    glTexCoordPointer(2, GL_FLOAT, stride, base + 6 * sizeof(GLfloat));
+
+    // save the real shade model: runShade values override it per-run, and
+    // OpenGLGState's delta logic assumes nobody changes the shade model
+    // behind its back - leaving a run shade applied would desync the
+    // tracker and break smooth shading for later draws (flat sky bug)
+    GLint savedShade = GL_SMOOTH;
+    glGetIntegerv(GL_SHADE_MODEL, &savedShade);
+
+    const size_t runCount = batch.runs.size();
+    for (size_t i = 0; i < runCount; i++)
+    {
+        const PartBatch::Run& run = batch.runs[i];
+        glShadeModel(batch.runShade[i]);
+        glDrawArrays(run.mode, run.first, run.count);
+    }
+
+    glShadeModel(savedShade);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    return;
 }
 
 
@@ -381,13 +436,130 @@ static void setupScales()
 // ---------------------------
 
 
+// capture state (see PartBatch in TankGeometryMgr.h)
+static bool capturing = false;
+static PartBatch* captureBatch = NULL;
+// pending vertices of the run currently being captured
+static GLenum  runMode = 0;
+static int     runFirst = -1;
+static int     runCount = 0;
+static GLenum  runShade = GL_FLAT;
+// the current normal/texcoord, folded into each vertex as it is appended
+static GLfloat lastNormal[3]   = {0.0f, 0.0f, 1.0f};
+static GLfloat lastTexCoord[2] = {0.0f, 0.0f};
+// the vertex most recently appended (fans need re-tessellation)
+static GLfloat lastVertex[8];
+static bool    haveLastVertex = false;
+
+
+void TankGeometryUtils::beginCapture(PartBatch* batch)
+{
+    captureBatch = batch;
+    capturing = true;
+    runMode = 0;
+    runFirst = -1;
+    runCount = 0;
+    haveLastVertex = false;
+}
+
+
+void TankGeometryUtils::endCapture()
+{
+    // close any open run
+    if (runCount > 0 && captureBatch != NULL)
+    {
+        captureBatch->runs.push_back(PartBatch::Run());
+        PartBatch::Run& run = captureBatch->runs.back();
+        run.mode = runMode;
+        run.first = runFirst;
+        run.count = runCount;
+        captureBatch->runShade.push_back(runShade);
+    }
+    runMode = 0;
+    runFirst = -1;
+    runCount = 0;
+    haveLastVertex = false;
+    capturing = false;
+    captureBatch = NULL;
+}
+
+
+// start a new run inside the capture batch
+void TankGeometryUtils::startRun(GLenum mode, GLenum shade)
+{
+    if (captureBatch == NULL)
+        return;
+    // close the previous run
+    if (runCount > 0)
+    {
+        captureBatch->runs.push_back(PartBatch::Run());
+        PartBatch::Run& run = captureBatch->runs.back();
+        run.mode = runMode;
+        run.first = runFirst;
+        run.count = runCount;
+        captureBatch->runShade.push_back(runShade);
+        runCount = 0;
+    }
+    runMode = mode;
+    runShade = shade;
+    runFirst = (int)(captureBatch->data.size() / 8);
+    runCount = 0;
+    haveLastVertex = false;
+}
+
+
+// triangle-fan emulation: emit (v0, v[i-1], v[i]) as GL_TRIANGLES.
+// strips are emitted natively; fans are re-tessellated because
+// glDrawArrays has no fan mode.
+static void emitFanVertex(const GLfloat* vtx)
+{
+    if (captureBatch == NULL)
+        return;
+    const int count = runCount; // vertices emitted so far in this fan
+    if (count < 3)
+    {
+        captureBatch->data.insert(captureBatch->data.end(), vtx, vtx + 8);
+        runCount++;
+        return;
+    }
+    // re-emit vertex 0 and the previous vertex, then this one
+    const GLfloat* v0 = &captureBatch->data[runFirst * 8];
+    captureBatch->data.insert(captureBatch->data.end(), v0, v0 + 8);
+    captureBatch->data.insert(captureBatch->data.end(), lastVertex, lastVertex + 8);
+    captureBatch->data.insert(captureBatch->data.end(), vtx, vtx + 8);
+    runCount += 3;
+}
+
+
 void TankGeometryUtils::doVertex3f(GLfloat x, GLfloat y, GLfloat z)
 {
     const float* scale = currentScaleFactor;
     x = x * scale[0];
     y = y * scale[1];
     z = z * scale[2];
-    glVertex3f(x, y, z);
+    if (capturing && captureBatch != NULL)
+    {
+        GLfloat vtx[8];
+        vtx[0] = x;
+        vtx[1] = y;
+        vtx[2] = z;
+        vtx[3] = lastNormal[0];
+        vtx[4] = lastNormal[1];
+        vtx[5] = lastNormal[2];
+        vtx[6] = lastTexCoord[0];
+        vtx[7] = lastTexCoord[1];
+        if (runMode == GL_TRIANGLE_FAN)
+            emitFanVertex(vtx);
+        else
+        {
+            captureBatch->data.insert(captureBatch->data.end(), vtx, vtx + 8);
+            runCount++;
+        }
+        memcpy(lastVertex, vtx, sizeof(lastVertex));
+        haveLastVertex = true;
+    }
+    else
+        glVertex3f(x, y, z);
     return;
 }
 
@@ -407,7 +579,9 @@ void TankGeometryUtils::doNormal3f(GLfloat x, GLfloat y, GLfloat z)
         y *= scale[1] / d;
         z *= scale[2] / d;
     }
-    glNormal3f(x, y, z);
+    lastNormal[0] = x;
+    lastNormal[1] = y;
+    lastNormal[2] = z;
     return;
 }
 
@@ -416,7 +590,8 @@ void TankGeometryUtils::doTexCoord2f(GLfloat x, GLfloat y)
 {
     if (shadowMode == ShadowOn)
         return;
-    glTexCoord2f(x, y);
+    lastTexCoord[0] = x;
+    lastTexCoord[1] = y;
     return;
 }
 

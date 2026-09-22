@@ -84,7 +84,7 @@ static void DrawOBJIndexFace (int v1, int t1, int n1,
 
 static int DrawTankSides (void)
 {
-    glBegin(GL_TRIANGLES);
+    startRun(GL_TRIANGLES, GL_FLAT);
     DrawOBJIndexFace( 1,1,1, 2,2,1, 3,3,2);
     DrawOBJIndexFace( 4,4,3, 5,5,3, 6,6,3);
     DrawOBJIndexFace( 1,1,1, 3,3,2, 7,7,2);
@@ -105,14 +105,13 @@ static int DrawTankSides (void)
     DrawOBJIndexFace( 22,10,7, 20,8,7, 24,12,7);
     DrawOBJIndexFace( 22,10,7, 24,12,7, 17,4,7);
     DrawOBJIndexFace( 23,11,7, 22,10,7, 17,4,7);
-    glEnd();
     return 20;
 }
 
 static int DrawCentralBody(void)
 {
     // draw the outer loop
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(0.984696f, 0.000000f, 0.174282f);
     doTexCoord2f(1.210f, 2.290f);
     doVertex3f(2.820f, -0.877f, 0.716f);
@@ -177,7 +176,6 @@ static int DrawCentralBody(void)
     doVertex3f(2.820f, -0.877f, 0.716f);
     doTexCoord2f(0.669f, 2.040f);
     doVertex3f(2.820f, 0.878f, 0.716f);
-    glEnd(); // 26 verts -> 24 tris
 
     return 24;
 }
@@ -185,7 +183,7 @@ static int DrawCentralBody(void)
 
 static int DrawRightRearExaust (void)
 {
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(0.000000f, 1.000000f, 0.000000f);
     doTexCoord2f(1.540f, 0.341f);
     doVertex3f(-2.820f, 0.686f, 1.070f);
@@ -210,9 +208,8 @@ static int DrawRightRearExaust (void)
     doVertex3f(-2.820f, 0.686f, 1.070f);
     doTexCoord2f(1.580f, 0.261f);
     doVertex3f(-3.080f, 0.686f, 1.070f);
-    glEnd(); // 10 verts -> 8 tris
 
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(-1.000000f, 0.000000f, 0.000000f);
     doTexCoord2f(1.580f, 0.261f);
     doVertex3f(-3.080f, 0.686f, 1.170f);
@@ -222,7 +219,6 @@ static int DrawRightRearExaust (void)
     doVertex3f(-3.080f, 0.367f, 1.170f);
     doTexCoord2f(1.670f, 0.307f);
     doVertex3f(-3.080f, 0.367f, 1.070f);
-    glEnd(); // 4 verts -> 2 tris
 
     return 10;
 }
@@ -230,7 +226,7 @@ static int DrawRightRearExaust (void)
 
 static int DrawLeftRearExaust ( void )
 {
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(0.000000f, 1.000000f, 0.000000f);
     doTexCoord2f(1.780f, 0.445f);
     doVertex3f(-2.840f, -0.084f, 1.070f);
@@ -255,9 +251,8 @@ static int DrawLeftRearExaust ( void )
     doVertex3f(-2.840f, -0.084f, 1.070f);
     doTexCoord2f(1.810f, 0.366f);
     doVertex3f(-3.100f, -0.084f, 1.070f);
-    glEnd(); // 10 verts -> 8 tris
 
-    glBegin(GL_TRIANGLE_STRIP);
+    startRun(GL_TRIANGLE_STRIP, GL_FLAT);
     doNormal3f(-1.000000f, 0.000000f, 0.000000f);
     doTexCoord2f(1.810f, 0.366f);
     doVertex3f(-3.100f, -0.084f, 1.170f);
@@ -267,7 +262,6 @@ static int DrawLeftRearExaust ( void )
     doVertex3f(-3.100f, -0.877f, 1.170f);
     doTexCoord2f(2.060f, 0.480f);
     doVertex3f(-3.100f, -0.877f, 1.070f);
-    glEnd(); // 4 verts -> 2 tris
 
     return 10;
 }
@@ -275,12 +269,8 @@ static int DrawLeftRearExaust ( void )
 
 int TankGeometryUtils::buildHighBody (void)
 {
-    int tris = 0;
-    glShadeModel(GL_FLAT);
-    tris += DrawTankSides();
-    tris += DrawCentralBody();
-    tris += DrawRightRearExaust();
-    tris += DrawLeftRearExaust();
+    const int tris = DrawTankSides() + DrawCentralBody()
+                   + DrawRightRearExaust() + DrawLeftRearExaust();
     return tris;
 }
 

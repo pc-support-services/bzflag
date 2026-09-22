@@ -21,6 +21,7 @@
 #include "TextureManager.h"
 #include "PhysicsDriver.h"
 #include "ObstacleMgr.h"
+#include "GLBatch.h"
 #include "MeshSceneNode.h"
 #include "ObstacleList.h"
 #include "WallObstacle.h"
@@ -58,6 +59,8 @@ RadarRenderer::RadarRenderer(const SceneRenderer&, World* _world)
 {
 
     setControlColor();
+    colorScratch[0] = colorScratch[1] = colorScratch[2] = 1.0f;
+    colorScratch[3] = 1.0f;
 }
 
 void RadarRenderer::setWorld(World* _world)
@@ -106,6 +109,8 @@ void RadarRenderer::setTankColor(const Player* player)
     //my tank
     if (player->getId() == myTank->getId() )
     {
+        colorScratch[0] = colorScratch[1] = colorScratch[2] = 1.0f;
+        colorScratch[3] = 1.0f;
         glColor3f(1.0f, 1.0f, 1.0f);
         return;
     }
@@ -125,12 +130,21 @@ void RadarRenderer::setTankColor(const Player* player)
         dimmedcolor[0] = color[0] * dimfactor;
         dimmedcolor[1] = color[1] * dimfactor;
         dimmedcolor[2] = color[2] * dimfactor;
+        colorScratch[0] = dimmedcolor[0];
+        colorScratch[1] = dimmedcolor[1];
+        colorScratch[2] = dimmedcolor[2];
+        colorScratch[3] = 1.0f;
         glColor3fv(dimmedcolor);
     }
     else
     {
-        glColor3fv(Team::getRadarColor(myTank->getFlag() ==
-                                       Flags::Colorblindness ? RogueTeam : player->getTeam()));
+        const float* rcolor = Team::getRadarColor(myTank->getFlag() ==
+                                       Flags::Colorblindness ? RogueTeam : player->getTeam());
+        colorScratch[0] = rcolor[0];
+        colorScratch[1] = rcolor[1];
+        colorScratch[2] = rcolor[2];
+        colorScratch[3] = 1.0f;
+        glColor3fv(rcolor);
     }
     // If this tank is hunted flash it on the radar
     if (player->isHunted() && myTank->getFlag() != Flags::Colorblindness)
@@ -143,6 +157,10 @@ void RadarRenderer::setTankColor(const Player* player)
                 flashcolor[0] = 0.0f;
                 flashcolor[1] = 0.8f;
                 flashcolor[2] = 0.9f;
+                colorScratch[0] = flashcolor[0];
+                colorScratch[1] = flashcolor[1];
+                colorScratch[2] = flashcolor[2];
+                colorScratch[3] = 1.0f;
                 glColor3fv(flashcolor);
             }
         }
@@ -205,13 +223,17 @@ void RadarRenderer::drawTank(const float pos[3], const Player* player, bool useS
     size = size * (1.0f + (0.5f * (pos[2] / boxHeight)));
 
     // draw the height box
-    glBegin(GL_LINE_STRIP);
-    glVertex2f(-size, 0.0f);
-    glVertex2f(0.0f, -size);
-    glVertex2f(+size, 0.0f);
-    glVertex2f(0.0f, +size);
-    glVertex2f(-size, 0.0f);
-    glEnd();
+    // GLBatch reads the color at begin(), so re-issue it after any
+    // glRectf()/fixed-function draw that may have reset GL state
+    glColor4fv(colorScratch);
+    static GLBatch batch;
+    batch.begin(GL_LINE_STRIP);
+    batch.vertex2f(-size, 0.0f);
+    batch.vertex2f(0.0f, -size);
+    batch.vertex2f(+size, 0.0f);
+    batch.vertex2f(0.0f, +size);
+    batch.vertex2f(-size, 0.0f);
+    batch.end();
 }
 
 
@@ -252,16 +274,17 @@ void RadarRenderer::drawFancyTank(const Player* player)
 void RadarRenderer::drawFlag(const float pos[3])
 {
     GLfloat s = BZDBCache::flagRadius > 3.0f * ps ? BZDBCache::flagRadius : 3.0f * ps;
-    glBegin(GL_LINES);
-    glVertex2f(pos[0] - s, pos[1]);
-    glVertex2f(pos[0] + s, pos[1]);
-    glVertex2f(pos[0] + s, pos[1]);
-    glVertex2f(pos[0] - s, pos[1]);
-    glVertex2f(pos[0], pos[1] - s);
-    glVertex2f(pos[0], pos[1] + s);
-    glVertex2f(pos[0], pos[1] + s);
-    glVertex2f(pos[0], pos[1] - s);
-    glEnd();
+    static GLBatch batch;
+    batch.begin(GL_LINES);
+    batch.vertex2f(pos[0] - s, pos[1]);
+    batch.vertex2f(pos[0] + s, pos[1]);
+    batch.vertex2f(pos[0] + s, pos[1]);
+    batch.vertex2f(pos[0] - s, pos[1]);
+    batch.vertex2f(pos[0], pos[1] - s);
+    batch.vertex2f(pos[0], pos[1] + s);
+    batch.vertex2f(pos[0], pos[1] + s);
+    batch.vertex2f(pos[0], pos[1] - s);
+    batch.end();
 }
 
 void RadarRenderer::drawFlagOnTank()
@@ -274,16 +297,17 @@ void RadarRenderer::drawFlagOnTank()
 
     float tankRadius = BZDBCache::tankRadius;
     GLfloat s = 2.5f * tankRadius > 4.0f * ps ? 2.5f * tankRadius : 4.0f * ps;
-    glBegin(GL_LINES);
-    glVertex2f(-s, 0.0f);
-    glVertex2f(+s, 0.0f);
-    glVertex2f(+s, 0.0f);
-    glVertex2f(-s, 0.0f);
-    glVertex2f(0.0f, -s);
-    glVertex2f(0.0f, +s);
-    glVertex2f(0.0f, +s);
-    glVertex2f(0.0f, -s);
-    glEnd();
+    static GLBatch batch;
+    batch.begin(GL_LINES);
+    batch.vertex2f(-s, 0.0f);
+    batch.vertex2f(+s, 0.0f);
+    batch.vertex2f(+s, 0.0f);
+    batch.vertex2f(-s, 0.0f);
+    batch.vertex2f(0.0f, -s);
+    batch.vertex2f(0.0f, +s);
+    batch.vertex2f(0.0f, +s);
+    batch.vertex2f(0.0f, -s);
+    batch.end();
 
     glPopMatrix();
 }
@@ -323,14 +347,13 @@ void RadarRenderer::renderFrame(SceneRenderer& renderer)
 
     glColor4f(teamColor[0],teamColor[1],teamColor[2],outlineOpacity);
 
-    glBegin(GL_LINE_LOOP);
-    {
-        glVertex2f(left, top);
-        glVertex2f(right, top);
-        glVertex2f(right, bottom);
-        glVertex2f(left, bottom);
-    }
-    glEnd();
+    static GLBatch batch;
+    batch.begin(GL_LINE_LOOP);
+    batch.vertex2f(left, top);
+    batch.vertex2f(right, top);
+    batch.vertex2f(right, bottom);
+    batch.vertex2f(left, bottom);
+    batch.end();
 
     if (BZDBCache::blend)
         glDisable(GL_BLEND);
@@ -466,18 +489,17 @@ void RadarRenderer::render(SceneRenderer& renderer, bool blank, bool observer)
             glEnable(GL_TEXTURE_2D);
             tm.bind(noiseTexture);
 
-            glBegin(GL_TRIANGLE_STRIP);
-            {
-                glTexCoord2f(np[noisePattern+0],np[noisePattern+1]);
-                glVertex2f(-radarRange,-radarRange);
-                glTexCoord2f(np[noisePattern+2],np[noisePattern+1]);
-                glVertex2f( radarRange,-radarRange);
-                glTexCoord2f(np[noisePattern+0],np[noisePattern+3]);
-                glVertex2f(-radarRange, radarRange);
-                glTexCoord2f(np[noisePattern+2],np[noisePattern+3]);
-                glVertex2f( radarRange, radarRange);
-            }
-            glEnd();
+            static GLBatch batch;
+            batch.begin(GL_TRIANGLE_STRIP);
+            batch.texCoord2f(np[noisePattern+0],np[noisePattern+1]);
+            batch.vertex2f(-radarRange,-radarRange);
+            batch.texCoord2f(np[noisePattern+2],np[noisePattern+1]);
+            batch.vertex2f( radarRange,-radarRange);
+            batch.texCoord2f(np[noisePattern+0],np[noisePattern+3]);
+            batch.vertex2f(-radarRange, radarRange);
+            batch.texCoord2f(np[noisePattern+2],np[noisePattern+3]);
+            batch.vertex2f( radarRange, radarRange);
+            batch.end();
 
             glDisable(GL_TEXTURE_2D);
         }
@@ -488,18 +510,17 @@ void RadarRenderer::render(SceneRenderer& renderer, bool blank, bool observer)
             glEnable(GL_TEXTURE_2D);
             tm.bind(noiseTexture);
 
-            glBegin(GL_TRIANGLE_STRIP);
-            {
-                glTexCoord2f(0,0);
-                glVertex2f(-radarRange,-radarRange);
-                glTexCoord2f(1,0);
-                glVertex2f( radarRange,-radarRange);
-                glTexCoord2f(0,1);
-                glVertex2f(-radarRange, radarRange);
-                glTexCoord2f(1,1);
-                glVertex2f( radarRange, radarRange);
-            }
-            glEnd();
+            static GLBatch batch2;
+            batch2.begin(GL_TRIANGLE_STRIP);
+            batch2.texCoord2f(0,0);
+            batch2.vertex2f(-radarRange,-radarRange);
+            batch2.texCoord2f(1,0);
+            batch2.vertex2f( radarRange,-radarRange);
+            batch2.texCoord2f(0,1);
+            batch2.vertex2f(-radarRange, radarRange);
+            batch2.texCoord2f(1,1);
+            batch2.vertex2f( radarRange, radarRange);
+            batch2.end();
 
             glDisable(GL_TEXTURE_2D);
         }
@@ -550,11 +571,12 @@ void RadarRenderer::render(SceneRenderer& renderer, bool blank, bool observer)
             glColor3f(1.0f, 0.625f, 0.125f);
             const float fovx = renderer.getViewFrustum().getFOVx();
             const float viewWidth = radarRange * tanf(0.5f * fovx);
-            glBegin(GL_LINE_STRIP);
-            glVertex2f(-viewWidth, radarRange);
-            glVertex2f(0.0f, 0.0f);
-            glVertex2f(viewWidth, radarRange);
-            glEnd();
+            static GLBatch batch;
+            batch.begin(GL_LINE_STRIP);
+            batch.vertex2f(-viewWidth, radarRange);
+            batch.vertex2f(0.0f, 0.0f);
+            batch.vertex2f(viewWidth, radarRange);
+            batch.end();
         }
 
         // transform to the observer's viewpoint
@@ -727,21 +749,22 @@ void RadarRenderer::render(SceneRenderer& renderer, bool blank, bool observer)
         // north marker
         GLfloat ns = 0.05f * radarRange, ny = 0.9f * radarRange;
         glColor3f(1.0f, 1.0f, 1.0f);
-        glBegin(GL_LINE_STRIP);
-        glVertex2f(-ns, ny - ns);
-        glVertex2f(-ns, ny + ns);
-        glVertex2f(ns, ny - ns);
-        glVertex2f(ns, ny + ns);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_LINE_STRIP);
+        batch.vertex2f(-ns, ny - ns);
+        batch.vertex2f(-ns, ny + ns);
+        batch.vertex2f(ns, ny - ns);
+        batch.vertex2f(ns, ny + ns);
+        batch.end();
 
         // always up
         glPopMatrix();
 
         // forward tick
-        glBegin(GL_LINES);
-        glVertex2f(0.0f, radarRange - ps);
-        glVertex2f(0.0f, radarRange - 4.0f * ps);
-        glEnd();
+        batch.begin(GL_LINES);
+        batch.vertex2f(0.0f, radarRange - ps);
+        batch.vertex2f(0.0f, radarRange - 4.0f * ps);
+        batch.end();
 
         if (!observer)
         {
@@ -873,7 +896,8 @@ void RadarRenderer::renderWalls()
     const ObstacleList& walls = OBSTACLEMGR.getWalls();
     int count = walls.size();
     glColor3f(0.25f, 0.5f, 0.5f);
-    glBegin(GL_LINES);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
     for (int i = 0; i < count; i++)
     {
         const WallObstacle& wall = *((const WallObstacle*) walls[i]);
@@ -881,10 +905,10 @@ void RadarRenderer::renderWalls()
         const float c   = wid * cosf(wall.getRotation());
         const float s   = wid * sinf(wall.getRotation());
         const float* pos = wall.getPosition();
-        glVertex2f(pos[0] - s, pos[1] + c);
-        glVertex2f(pos[0] + s, pos[1] - c);
+        batch.vertex2f(pos[0] - s, pos[1] + c);
+        batch.vertex2f(pos[0] + s, pos[1] - c);
     }
-    glEnd();
+    batch.end();
 
     return;
 }
@@ -1024,12 +1048,13 @@ void RadarRenderer::renderBoxPyrMesh()
         const float wx = c * box.getWidth(), wy = s * box.getWidth();
         const float hx = -s * box.getBreadth(), hy = c * box.getBreadth();
         const float* pos = box.getPosition();
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-        glVertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-        glVertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-        glVertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_TRIANGLE_STRIP);
+        batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
+        batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
+        batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
+        batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
+        batch.end();
     }
 
     // draw pyramid buildings
@@ -1047,12 +1072,13 @@ void RadarRenderer::renderBoxPyrMesh()
         const float wx = c * pyr.getWidth(), wy = s * pyr.getWidth();
         const float hx = -s * pyr.getBreadth(), hy = c * pyr.getBreadth();
         const float* pos = pyr.getPosition();
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-        glVertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-        glVertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-        glVertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_TRIANGLE_STRIP);
+        batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
+        batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
+        batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
+        batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
+        batch.end();
     }
 
     // draw mesh obstacles
@@ -1096,13 +1122,14 @@ void RadarRenderer::renderBoxPyrMesh()
                 glColor4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
             // draw the face as a triangle fan
             int vertexCount = face->getVertexCount();
-            glBegin(GL_TRIANGLE_FAN);
+            static GLBatch batch;
+            batch.begin(GL_TRIANGLE_FAN);
             for (int v = 0; v < vertexCount; v++)
             {
                 const float* pos = face->getVertex(v);
-                glVertex2f(pos[0], pos[1]);
+                batch.vertex2f(pos[0], pos[1]);
             }
-            glEnd();
+            batch.end();
         }
     }
     if (!enhanced)
@@ -1119,6 +1146,7 @@ void RadarRenderer::renderBoxPyrMesh()
     {
         glEnable(GL_BLEND); // NOTE: revert from the enhanced setting
         count = boxes.size();
+        static GLBatch batch;
         for (i = 0; i < count; i++)
         {
             const BoxBuilding& box = *((const BoxBuilding*) boxes[i]);
@@ -1133,12 +1161,12 @@ void RadarRenderer::renderBoxPyrMesh()
             const float wx = c * box.getWidth(), wy = s * box.getWidth();
             const float hx = -s * box.getBreadth(), hy = c * box.getBreadth();
             const float* pos = box.getPosition();
-            glBegin(GL_LINE_LOOP);
-            glVertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-            glVertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-            glVertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-            glVertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-            glEnd();
+            batch.begin(GL_LINE_LOOP);
+            batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
+            batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
+            batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
+            batch.end();
         }
 
         count = pyramids.size();
@@ -1154,12 +1182,12 @@ void RadarRenderer::renderBoxPyrMesh()
             const float wx = c * pyr.getWidth(), wy = s * pyr.getWidth();
             const float hx = -s * pyr.getBreadth(), hy = c * pyr.getBreadth();
             const float* pos = pyr.getPosition();
-            glBegin(GL_LINE_LOOP);
-            glVertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-            glVertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-            glVertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-            glVertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-            glEnd();
+            batch.begin(GL_LINE_LOOP);
+            batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
+            batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
+            batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
+            batch.end();
         }
     }
 
@@ -1182,18 +1210,19 @@ void RadarRenderer::renderBasesAndTeles()
                 if (base == NULL)
                     break;
                 glColor3fv(Team::getRadarColor(TeamColor(i)));
-                glBegin(GL_LINE_LOOP);
+                static GLBatch batch;
+                batch.begin(GL_LINE_LOOP);
                 const float beta = atan2f(base[5], base[4]);
                 const float r = hypotf(base[4], base[5]);
-                glVertex2f(base[0] + r * cosf(base[3] + beta),
+                batch.vertex2f(base[0] + r * cosf(base[3] + beta),
                            base[1] + r * sinf(base[3] + beta));
-                glVertex2f(base[0] + r * cosf((float)(base[3] - beta + M_PI)),
+                batch.vertex2f(base[0] + r * cosf((float)(base[3] - beta + M_PI)),
                            base[1] + r * sinf((float)(base[3] - beta + M_PI)));
-                glVertex2f(base[0] + r * cosf((float)(base[3] + beta + M_PI)),
+                batch.vertex2f(base[0] + r * cosf((float)(base[3] + beta + M_PI)),
                            base[1] + r * sinf((float)(base[3] + beta + M_PI)));
-                glVertex2f(base[0] + r * cosf(base[3] - beta),
+                batch.vertex2f(base[0] + r * cosf(base[3] - beta),
                            base[1] + r * sinf(base[3] - beta));
-                glEnd();
+                batch.end();
             }
         }
     }
@@ -1206,7 +1235,8 @@ void RadarRenderer::renderBasesAndTeles()
     // is one system that doesn't do correct filtering.
     const ObstacleList& teleporters = OBSTACLEMGR.getTeles();
     int count = teleporters.size();
-    glBegin(GL_LINES);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
     for (i = 0; i < count; i++)
     {
         const Teleporter & tele = *((const Teleporter *) teleporters[i]);
@@ -1221,20 +1251,20 @@ void RadarRenderer::renderBasesAndTeles()
             const float wx = c * tele.getWidth (), wy = s * tele.getWidth ();
             const float hx = -s * tele.getBreadth (), hy = c * tele.getBreadth ();
             const float *pos = tele.getPosition ();
-            glVertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
-            glVertex2f (pos[0] + wx - hx, pos[1] + wy - hy);
+            batch.vertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.vertex2f (pos[0] + wx - hx, pos[1] + wy - hy);
 
-            glVertex2f (pos[0] + wx - hx, pos[1] + wy - hy);
-            glVertex2f (pos[0] + wx + hx, pos[1] + wy + hy);
+            batch.vertex2f (pos[0] + wx - hx, pos[1] + wy - hy);
+            batch.vertex2f (pos[0] + wx + hx, pos[1] + wy + hy);
 
-            glVertex2f (pos[0] + wx + hx, pos[1] + wy + hy);
-            glVertex2f (pos[0] - wx + hx, pos[1] - wy + hy);
+            batch.vertex2f (pos[0] + wx + hx, pos[1] + wy + hy);
+            batch.vertex2f (pos[0] - wx + hx, pos[1] - wy + hy);
 
-            glVertex2f (pos[0] - wx + hx, pos[1] - wy + hy);
-            glVertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.vertex2f (pos[0] - wx + hx, pos[1] - wy + hy);
+            batch.vertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
 
-            glVertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
-            glVertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.vertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.vertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
         }
         else
         {
@@ -1246,13 +1276,13 @@ void RadarRenderer::renderBasesAndTeles()
             const float c = tw * cosf (tele.getRotation ());
             const float s = tw * sinf (tele.getRotation ());
             const float *pos = tele.getPosition ();
-            glVertex2f (pos[0] - s, pos[1] + c);
-            glVertex2f (pos[0] + s, pos[1] - c);
-            glVertex2f (pos[0] + s, pos[1] - c);
-            glVertex2f (pos[0] - s, pos[1] + c);
+            batch.vertex2f (pos[0] - s, pos[1] + c);
+            batch.vertex2f (pos[0] + s, pos[1] - c);
+            batch.vertex2f (pos[0] + s, pos[1] - c);
+            batch.vertex2f (pos[0] - s, pos[1] + c);
         }
     }
-    glEnd();
+    batch.end();
 
     return;
 }

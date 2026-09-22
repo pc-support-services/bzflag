@@ -48,6 +48,7 @@ public:
         ;
     };
     void setStereo(bool) override;
+    void setMultisample(int samples);
     bool build() override
     {
         return true;

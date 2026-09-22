@@ -18,6 +18,20 @@ void SDLVisual::setDoubleBuffer(bool on)
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, on ? 1 : 0);
 }
 
+void SDLVisual::setMultisample(int samples)
+{
+    if (samples > 1)
+    {
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, samples);
+    }
+    else
+    {
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+    }
+}
+
 void SDLVisual::setRGBA(int minRed, int minGreen,
                         int minBlue, int minAlpha)
 {

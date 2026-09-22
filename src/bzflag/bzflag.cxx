@@ -142,6 +142,11 @@ static void     setVisual(BzfVisual* visual)
 #else
     visual->setStencil(1);
 #endif
+    // window-surface multisampling (anti-aliasing).  The renderer also
+    // supports MSAA render targets via the "multisample" BZDB var; this
+    // covers the common path where no framebuffer object is used.
+    if (BZDB.isSet("multisample"))
+        visual->setMultisample(BZDB.evalInt("multisample"));
 #ifdef USE_GL_STEREO
     if (BZDB.isSet("view") && BZDB.get("view") == configViewValues[1])
         visual->setStereo(true);

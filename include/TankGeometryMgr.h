@@ -85,10 +85,11 @@ void kill();
 void buildLists();
 void deleteLists();
 
-GLuint getPartList(TankGeometryEnums::TankShadow shadow,
-                   TankGeometryEnums::TankPart part,
-                   TankGeometryEnums::TankSize size,
-                   TankGeometryEnums::TankLOD lod);
+// draw a tank part from its VBO batch (replaces the old display-list call)
+void drawPart(TankGeometryEnums::TankShadow shadow,
+              TankGeometryEnums::TankPart part,
+              TankGeometryEnums::TankSize size,
+              TankGeometryEnums::TankLOD lod);
 
 int getPartTriangleCount(TankGeometryEnums::TankShadow shadow,
                          TankGeometryEnums::TankPart part,
@@ -116,10 +117,44 @@ float getTreadScale();
 // texcoords
 float getTreadTexLen();
 
+// Capture state: while capturing, doVertex3f/doNormal3f/doTexCoord2f append
+// into an interleaved array instead of issuing immediate-mode GL calls.
+// The builder functions (buildLowBody etc.) are called unchanged inside a
+// capture; the arrays are then uploaded to a VBO once per (shadow, lod, size,
+// part) and drawn with glDrawArrays runs. Zero visual change vs the old
+// display lists: same primitives, same order, same fixed-function state.
+struct PartBatch
+{
+    // interleaved: 3 pos + 3 normal + 2 texcoord = 8 floats per vertex
+    std::vector<GLfloat>   data;
+    // runs of consecutive vertices sharing one primitive mode
+    struct Run
+    {
+        GLenum mode;   // GL_TRIANGLE_STRIP / GL_TRIANGLE_FAN / GL_TRIANGLES
+        GLint  first;  // first vertex index
+        GLsizei count; // vertex count
+    };
+    std::vector<Run>   runs;
+    // shade model in effect when each run started (GL_FLAT / GL_SMOOTH),
+    // recorded so drawing can restore per-run shading exactly as the
+    // display lists did
+    std::vector<GLenum> runShade;
+    int   triangles;
+    GLuint vbo;      // 0 = not uploaded
+};
+
 // help to scale vertices and normals
 void doVertex3f(GLfloat x, GLfloat y, GLfloat z);
 void doNormal3f(GLfloat x, GLfloat y, GLfloat z);
 void doTexCoord2f(GLfloat x, GLfloat y);
+
+// capture control (used by TankGeometryMgr::buildLists)
+void beginCapture(PartBatch* batch);
+void endCapture();
+// start a new primitive run (called by the geometry builders in place of
+// glBegin/glShadeModel); mode is GL_TRIANGLE_STRIP/GL_TRIANGLE_FAN/GL_TRIANGLES,
+// shade is GL_FLAT/GL_SMOOTH
+void startRun(GLenum mode, GLenum shade);
 
 //
 // NOTE:  these all return their triangle count

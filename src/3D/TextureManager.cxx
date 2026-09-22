@@ -388,6 +388,24 @@ void TextureManager::setTextureFilter(int texId, OpenGLTexture::Filter filter)
 }
 
 
+void TextureManager::setTextureFilterAnisotropy(int texId)
+{
+    TextureIDMap::iterator it = textureIDs.find(texId);
+    if (it == textureIDs.end())
+    {
+        logDebugMessage(1,"setTextureFilterAnisotropy() Couldn't find texid: %i\n", texId);
+        return;
+    }
+
+    ImageInfo& image = *(it->second);
+    OpenGLTexture* texture = image.texture;
+    // re-applying the current filter re-applies the anisotropy setting
+    texture->setFilter(texture->getFilter());
+
+    return;
+}
+
+
 OpenGLTexture::Filter TextureManager::getTextureFilter(int texId)
 {
     TextureIDMap::iterator it = textureIDs.find(texId);

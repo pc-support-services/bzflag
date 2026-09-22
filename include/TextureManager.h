@@ -64,6 +64,7 @@ public:
 
     void updateTextureFilters();
     void setTextureFilter(int texId, OpenGLTexture::Filter filter);
+    void setTextureFilterAnisotropy(int texId);
     OpenGLTexture::Filter getTextureFilter(int texId);
 
     bool bind ( int id );

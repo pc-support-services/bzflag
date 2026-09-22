@@ -795,9 +795,11 @@ void Player::setVisualTeam (TeamColor visualTeam)
         return;
     lastVisualTeam = visualTeam;
 
-    static const GLfloat  tankSpecular[3] = { 0.1f, 0.1f, 0.1f };
+    // brighter specular with a tighter highlight: the old 0.1/20 combo
+    // produced almost no visible highlight; 0.4/40 reads as painted metal
+    static const GLfloat  tankSpecular[3] = { 0.4f, 0.4f, 0.4f };
     static GLfloat    tankEmissive[3] = { 0.0f, 0.0f, 0.0f };
-    static float      tankShininess = 20.0f;
+    static float      tankShininess = 40.0f;
     static GLfloat    rabbitEmissive[3] = { 0.0f, 0.0f, 0.0f };
     static float      rabbitShininess = 100.0f;
 

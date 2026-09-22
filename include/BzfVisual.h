@@ -36,6 +36,10 @@ public:
     virtual void    setAccum(int minRed, int minGreen,
                              int minBlue, int minAlpha) = 0;
     virtual void    setStereo(bool) = 0;
+    virtual void    setMultisample(int)
+    {
+        ;
+    }
     virtual void    setVerticalSync(bool)
     {
         ;
