@@ -19,6 +19,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 //
 // PolyWallSceneNode::Geometry
@@ -61,22 +62,24 @@ void            PolyWallSceneNode::Geometry::render()
 void            PolyWallSceneNode::Geometry::drawV() const
 {
     const int count = vertex.getSize();
-    glBegin(GL_TRIANGLE_FAN);
+    static GLBatch batch0;
+    batch0.begin(GL_TRIANGLE_FAN);
     for (int i = 0; i < count; i++)
-        glVertex3fv(vertex[i]);
-    glEnd();
+        batch0.vertex3fv(vertex[i]);
+    batch0.end();
 }
 
 void            PolyWallSceneNode::Geometry::drawVT() const
 {
     const int count = vertex.getSize();
-    glBegin(GL_TRIANGLE_FAN);
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLE_FAN);
     for (int i = 0; i < count; i++)
     {
-        glTexCoord2fv(uv[i]);
-        glVertex3fv(vertex[i]);
+        batch1.texCoord2fv(uv[i]);
+        batch1.vertex3fv(vertex[i]);
     }
-    glEnd();
+    batch1.end();
 }
 
 //

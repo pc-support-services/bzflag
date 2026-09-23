@@ -25,6 +25,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 //
 // QuadWallSceneNode::Geometry
@@ -109,7 +110,8 @@ QuadWallSceneNode::Geometry::~Geometry()
 
 #define RENDER(_e)                          \
   for (int k = 0, t = 0; t < dt; t++) {                 \
-    glBegin(GL_TRIANGLE_STRIP);                     \
+    static GLBatch batch0;                      \
+    batch0.begin(GL_TRIANGLE_STRIP);                \
     for (int s = 0; s < dsq; k += 4, s++) {             \
       _e(k+ds+1);                           \
       _e(k);                                \
@@ -142,10 +144,10 @@ QuadWallSceneNode::Geometry::~Geometry()
     _e(k);                              \
     k++;                                \
     }                                   \
-    glEnd();                                \
+    batch0.end();                           \
   }
-#define EMITV(_i)   glVertex3fv(vertex[_i])
-#define EMITVT(_i)  glTexCoord2fv(uv[_i]); glVertex3fv(vertex[_i])
+#define EMITV(_i)   batch0.vertex3fv(vertex[_i])
+#define EMITVT(_i)  batch0.texCoord2fv(uv[_i]); batch0.vertex3fv(vertex[_i])
 
 const GLfloat* QuadWallSceneNode::Geometry::getPosition() const
 {
@@ -167,12 +169,13 @@ void            QuadWallSceneNode::Geometry::render()
 void            QuadWallSceneNode::Geometry::renderShadow()
 {
     int last = (ds + 1) * dt;
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex3fv(vertex[last]);
-    glVertex3fv(vertex[0]);
-    glVertex3fv(vertex[last + ds]);
-    glVertex3fv(vertex[ds]);
-    glEnd();
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLE_STRIP);
+    batch1.vertex3fv(vertex[last]);
+    batch1.vertex3fv(vertex[0]);
+    batch1.vertex3fv(vertex[last + ds]);
+    batch1.vertex3fv(vertex[ds]);
+    batch1.end();
     addTriangleCount(2);
 }
 

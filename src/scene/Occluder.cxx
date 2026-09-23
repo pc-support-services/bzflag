@@ -22,6 +22,7 @@
 #include "Frustum.h"
 #include "Intersect.h"
 #include "StateDatabase.h"
+#include "GLBatch.h"
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -418,11 +419,12 @@ void Occluder::draw() const
         outwards[2] = center[2] - (length * planes[0][2]);
 
         // draw the plane normal
-        glBegin (GL_LINES);
+        static GLBatch batch0;
+        batch0.begin(GL_LINES);
         glColor4fv (colors[0]);
         glVertex3fv (center);
         glVertex3fv (outwards);
-        glEnd ();
+        batch0.end();
     }
 
     // drawn the edges and normals
@@ -438,7 +440,8 @@ void Occluder::draw() const
                 midpoint[a] = 0.5f * (vertices[v][a] + vertices[vn][a]);
                 outwards[a] = midpoint[a] - (length * planes[vn + 1][a]);
             }
-            glBegin (GL_LINES);
+            static GLBatch batch1;
+            batch1.begin(GL_LINES);
             glColor4fv (colors[(v % 4) + 1]);
             if (DrawEdges)
             {
@@ -450,7 +453,7 @@ void Occluder::draw() const
                 glVertex3fv (midpoint);
                 glVertex3fv (outwards);
             }
-            glEnd();
+            batch1.end();
         }
     }
 
@@ -459,10 +462,11 @@ void Occluder::draw() const
     {
         for (v = 0; v < vertexCount; v++)
         {
-            glBegin (GL_POINTS);
+            static GLBatch batch2;
+            batch2.begin(GL_POINTS);
             glColor4fv (colors[(v % 4) + 1]);
             glVertex3fv (vertices[v]);
-            glEnd();
+            batch2.end();
         }
     }
 

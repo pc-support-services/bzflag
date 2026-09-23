@@ -23,6 +23,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 //
 // TriWallSceneNode::Geometry
@@ -100,17 +101,18 @@ TriWallSceneNode::Geometry::~Geometry()
 #define RENDER(_e)                          \
   for (int k = 0, t = 0; t < de; t++) {                 \
     int e = de - t;                         \
-    glBegin(GL_TRIANGLE_STRIP);                     \
+    static GLBatch batch0;                      \
+    batch0.begin(GL_TRIANGLE_STRIP);                \
     for (int s = 0; s < e; k++, s++) {                  \
       _e(k+e+1);                            \
       _e(k);                                \
     }                                   \
     _e(k);                              \
-    glEnd();                                \
+    batch0.end();                           \
     k++;                                \
   }
-#define EMITV(_i)   glVertex3fv(vertex[_i])
-#define EMITVT(_i)  glTexCoord2fv(uv[_i]); glVertex3fv(vertex[_i])
+#define EMITV(_i)   batch0.vertex3fv(vertex[_i])
+#define EMITVT(_i)  batch0.texCoord2fv(uv[_i]); batch0.vertex3fv(vertex[_i])
 
 const GLfloat* TriWallSceneNode::Geometry::getPosition() const
 {
@@ -131,11 +133,12 @@ void            TriWallSceneNode::Geometry::render()
 
 void            TriWallSceneNode::Geometry::renderShadow()
 {
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex3fv(vertex[(de + 1) * (de + 2) / 2 - 1]);
-    glVertex3fv(vertex[0]);
-    glVertex3fv(vertex[de]);
-    glEnd();
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLE_STRIP);
+    batch1.vertex3fv(vertex[(de + 1) * (de + 2) / 2 - 1]);
+    batch1.vertex3fv(vertex[0]);
+    batch1.vertex3fv(vertex[de]);
+    batch1.end();
     addTriangleCount(1);
 }
 

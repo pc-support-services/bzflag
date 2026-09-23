@@ -28,6 +28,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 namespace
 {
@@ -461,16 +462,17 @@ void            FlagSceneNode::FlagRenderNode::render()
         else
         {
             // Not waving flag
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3f(0.0f, 0.0f, base);
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3f(Width, 0.0f, base);
-            glTexCoord2f(0.0f, 1.0f);
-            glVertex3f(0.0f, 0.0f, topHeight);
-            glTexCoord2f(1.0f, 1.0f);
-            glVertex3f(Width, 0.0f, topHeight);
-            glEnd();
+            static GLBatch batch0;
+            batch0.begin(GL_TRIANGLE_STRIP);
+            batch0.texCoord2f(0.0f, 0.0f);
+            batch0.vertex3f(0.0f, 0.0f, base);
+            batch0.texCoord2f(1.0f, 0.0f);
+            batch0.vertex3f(Width, 0.0f, base);
+            batch0.texCoord2f(0.0f, 1.0f);
+            batch0.vertex3f(0.0f, 0.0f, topHeight);
+            batch0.texCoord2f(1.0f, 1.0f);
+            batch0.vertex3f(Width, 0.0f, topHeight);
+            batch0.end();
             addTriangleCount(2);
         }
 
@@ -482,20 +484,21 @@ void            FlagSceneNode::FlagRenderNode::render()
 
         if (is_billboard && realFlag)
         {
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch1;
+            batch1.begin(GL_TRIANGLE_STRIP);
             {
-                glVertex3f(-poleWidth, 0.0f, 0.0f);
-                glVertex3f(-poleWidth, 0.0f, topHeight);
-                glVertex3f(0.0f, -poleWidth, 0.0f);
-                glVertex3f(0.0f, -poleWidth, topHeight);
-                glVertex3f(+poleWidth, 0.0f, 0.0f);
-                glVertex3f(+poleWidth, 0.0f, topHeight);
-                glVertex3f(0.0f, +poleWidth, 0.0f);
-                glVertex3f(0.0f, +poleWidth, topHeight);
-                glVertex3f(-poleWidth, 0.0f, 0.0f);
-                glVertex3f(-poleWidth, 0.0f, topHeight);
+                batch1.vertex3f(-poleWidth, 0.0f, 0.0f);
+                batch1.vertex3f(-poleWidth, 0.0f, topHeight);
+                batch1.vertex3f(0.0f, -poleWidth, 0.0f);
+                batch1.vertex3f(0.0f, -poleWidth, topHeight);
+                batch1.vertex3f(+poleWidth, 0.0f, 0.0f);
+                batch1.vertex3f(+poleWidth, 0.0f, topHeight);
+                batch1.vertex3f(0.0f, +poleWidth, 0.0f);
+                batch1.vertex3f(0.0f, +poleWidth, topHeight);
+                batch1.vertex3f(-poleWidth, 0.0f, 0.0f);
+                batch1.vertex3f(-poleWidth, 0.0f, topHeight);
             }
-            glEnd();
+            batch1.end();
             addTriangleCount(8);
         }
         else if (geoPole)
@@ -503,14 +506,15 @@ void            FlagSceneNode::FlagRenderNode::render()
             if (is_billboard)
                 glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
 
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch2;
+            batch2.begin(GL_TRIANGLE_STRIP);
             {
-                glVertex3f(-poleWidth, 0.0f, 0.0f);
-                glVertex3f(+poleWidth, 0.0f, 0.0f);
-                glVertex3f(-poleWidth, 0.0f, topHeight);
-                glVertex3f(+poleWidth, 0.0f, topHeight);
+                batch2.vertex3f(-poleWidth, 0.0f, 0.0f);
+                batch2.vertex3f(+poleWidth, 0.0f, 0.0f);
+                batch2.vertex3f(-poleWidth, 0.0f, topHeight);
+                batch2.vertex3f(+poleWidth, 0.0f, topHeight);
             }
-            glEnd();
+            batch2.end();
             addTriangleCount(2);
         }
         else
@@ -518,12 +522,13 @@ void            FlagSceneNode::FlagRenderNode::render()
             if (is_billboard)
                 glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
 
-            glBegin(GL_LINE_STRIP);
+            static GLBatch batch3;
+            batch3.begin(GL_LINE_STRIP);
             {
-                glVertex3f(0.0f, 0.0f, 0.0f);
-                glVertex3f(0.0f, 0.0f, topHeight);
+                batch3.vertex3f(0.0f, 0.0f, 0.0f);
+                batch3.vertex3f(0.0f, 0.0f, topHeight);
             }
-            glEnd();
+            batch3.end();
             addTriangleCount(1);
         }
 

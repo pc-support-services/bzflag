@@ -22,6 +22,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 // FIXME - no tessellation is done on for shot lighting
 
@@ -56,10 +57,11 @@ const GLfloat*  MeshPolySceneNode::Geometry::getPosition() const
 inline void MeshPolySceneNode::Geometry::drawV() const
 {
     const int count = vertices.getSize();
-    glBegin(GL_TRIANGLE_FAN);
+    static GLBatch batch0;
+    batch0.begin(GL_TRIANGLE_FAN);
     for (int i = 0; i < count; i++)
-        glVertex3fv(vertices[i]);
-    glEnd();
+        batch0.vertex3fv(vertices[i]);
+    batch0.end();
     return;
 }
 
@@ -67,13 +69,14 @@ inline void MeshPolySceneNode::Geometry::drawV() const
 inline void MeshPolySceneNode::Geometry::drawVT() const
 {
     const int count = vertices.getSize();
-    glBegin(GL_TRIANGLE_FAN);
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLE_FAN);
     for (int i = 0; i < count; i++)
     {
-        glTexCoord2fv(texcoords[i]);
-        glVertex3fv(vertices[i]);
+        batch1.texCoord2fv(texcoords[i]);
+        batch1.vertex3fv(vertices[i]);
     }
-    glEnd();
+    batch1.end();
     return;
 }
 
@@ -81,13 +84,14 @@ inline void MeshPolySceneNode::Geometry::drawVT() const
 inline void MeshPolySceneNode::Geometry::drawVN() const
 {
     const int count = vertices.getSize();
-    glBegin(GL_TRIANGLE_FAN);
+    static GLBatch batch2;
+    batch2.begin(GL_TRIANGLE_FAN);
     for (int i = 0; i < count; i++)
     {
-        glNormal3fv(normals[i]);
-        glVertex3fv(vertices[i]);
+        batch2.normal3fv(normals[i]);
+        batch2.vertex3fv(vertices[i]);
     }
-    glEnd();
+    batch2.end();
     return;
 }
 
@@ -95,14 +99,15 @@ inline void MeshPolySceneNode::Geometry::drawVN() const
 inline void MeshPolySceneNode::Geometry::drawVTN() const
 {
     const int count = vertices.getSize();
-    glBegin(GL_TRIANGLE_FAN);
+    static GLBatch batch3;
+    batch3.begin(GL_TRIANGLE_FAN);
     for (int i = 0; i < count; i++)
     {
-        glTexCoord2fv(texcoords[i]);
-        glNormal3fv(normals[i]);
-        glVertex3fv(vertices[i]);
+        batch3.texCoord2fv(texcoords[i]);
+        batch3.normal3fv(normals[i]);
+        batch3.vertex3fv(vertices[i]);
     }
-    glEnd();
+    batch3.end();
     return;
 }
 
