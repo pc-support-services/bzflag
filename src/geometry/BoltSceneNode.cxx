@@ -19,6 +19,7 @@
 
 // common implementation headers
 #include "StateDatabase.h"
+#include "GLBatch.h"
 #include "BZDBCache.h"
 #include "TextureManager.h"
 
@@ -306,21 +307,23 @@ void            BoltSceneNode::BoltRenderNode::setColor(
 
 void drawFin ( float maxRad, float finRadius, float boosterLen, float finForeDelta, float finCapSize)
 {
-    glBegin(GL_TRIANGLE_STRIP);
-    glNormal3f(1,0,0);
-    glVertex3f(0,maxRad,0);
-    glVertex3f(0,maxRad,boosterLen);
-    glVertex3f(0,maxRad+finRadius,boosterLen-finForeDelta-finCapSize);
-    glVertex3f(0,maxRad+finRadius,boosterLen-finForeDelta);
-    glEnd();
+    static GLBatch batch0;
+    batch0.begin(GL_TRIANGLE_STRIP);
+    batch0.normal3f(1,0,0);
+    batch0.vertex3f(0,maxRad,0);
+    batch0.vertex3f(0,maxRad,boosterLen);
+    batch0.vertex3f(0,maxRad+finRadius,boosterLen-finForeDelta-finCapSize);
+    batch0.vertex3f(0,maxRad+finRadius,boosterLen-finForeDelta);
+    batch0.end();
 
-    glBegin(GL_TRIANGLE_STRIP);
-    glNormal3f(-1,0,0);
-    glVertex3f(0,maxRad+finRadius,boosterLen-finForeDelta-finCapSize);
-    glVertex3f(0,maxRad+finRadius,boosterLen-finForeDelta);
-    glVertex3f(0,maxRad,0);
-    glVertex3f(0,maxRad,boosterLen);
-    glEnd();
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLE_STRIP);
+    batch1.normal3f(-1,0,0);
+    batch1.vertex3f(0,maxRad+finRadius,boosterLen-finForeDelta-finCapSize);
+    batch1.vertex3f(0,maxRad+finRadius,boosterLen-finForeDelta);
+    batch1.vertex3f(0,maxRad,0);
+    batch1.vertex3f(0,maxRad,boosterLen);
+    batch1.end();
 }
 
 void BoltSceneNode::BoltRenderNode::renderGeoGMBolt()
@@ -640,12 +643,13 @@ void            BoltSceneNode::BoltRenderNode::render()
                 const float s = FlareSize * sinf(phi[i]);
                 const float ti = theta[i];
                 const float fs = FlareSpread;
-                glBegin(GL_TRIANGLE_STRIP);
-                glVertex3f(0.0f,                0.0f,                0.0f);
-                glVertex3f(c * cosf(ti - fs),   c * sinf(ti - fs),   s);
-                glVertex3f(c * cosf(ti + fs),   c * sinf(ti + fs),   s);
-                glVertex3f(c * cosf(ti) * 2.0f, c * sinf(ti) * 2.0f, s * 2.0f);
-                glEnd();
+                static GLBatch batch2;
+                batch2.begin(GL_TRIANGLE_STRIP);
+                batch2.vertex3f(0.0f,                0.0f,                0.0f);
+                batch2.vertex3f(c * cosf(ti - fs),   c * sinf(ti - fs),   s);
+                batch2.vertex3f(c * cosf(ti + fs),   c * sinf(ti + fs),   s);
+                batch2.vertex3f(c * cosf(ti) * 2.0f, c * sinf(ti) * 2.0f, s * 2.0f);
+                batch2.end();
             }
             if (sceneNode->texturing) glEnable(GL_TEXTURE_2D);
 
@@ -660,16 +664,17 @@ void            BoltSceneNode::BoltRenderNode::render()
             const float u1 = u0 + du;
             const float v1 = v0 + dv;
             myColor4fv(textureColor); // 1.0f all
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord2f(u0, v0);
-            glVertex2f(-1.0f, -1.0f);
-            glTexCoord2f(u1, v0);
-            glVertex2f(+1.0f, -1.0f);
-            glTexCoord2f(u0, v1);
-            glVertex2f(-1.0f, +1.0f);
-            glTexCoord2f(u1, v1);
-            glVertex2f(+1.0f, +1.0f);
-            glEnd();
+            static GLBatch batch3;
+            batch3.begin(GL_TRIANGLE_STRIP);
+            batch3.texCoord2f(u0, v0);
+            batch3.vertex2f(-1.0f, -1.0f);
+            batch3.texCoord2f(u1, v0);
+            batch3.vertex2f(+1.0f, -1.0f);
+            batch3.texCoord2f(u0, v1);
+            batch3.vertex2f(-1.0f, +1.0f);
+            batch3.texCoord2f(u1, v1);
+            batch3.vertex2f(+1.0f, +1.0f);
+            batch3.end();
             addTriangleCount(2);
 
             // draw shot trail  (more billboarded quads)
@@ -727,16 +732,17 @@ void            BoltSceneNode::BoltRenderNode::render()
                     RENDERER.getViewFrustum().executeBillboard();
                     glScalef(s, s, s);
 
-                    glBegin(GL_TRIANGLE_STRIP);
-                    glTexCoord2f(U0, V0);
-                    glVertex2f(-1.0f, -1.0f);
-                    glTexCoord2f(U1, V0);
-                    glVertex2f(+1.0f, -1.0f);
-                    glTexCoord2f(U0, V1);
-                    glVertex2f(-1.0f, +1.0f);
-                    glTexCoord2f(U1, V1);
-                    glVertex2f(+1.0f, +1.0f);
-                    glEnd();
+                    static GLBatch batch4;
+                    batch4.begin(GL_TRIANGLE_STRIP);
+                    batch4.texCoord2f(U0, V0);
+                    batch4.vertex2f(-1.0f, -1.0f);
+                    batch4.texCoord2f(U1, V0);
+                    batch4.vertex2f(+1.0f, -1.0f);
+                    batch4.texCoord2f(U0, V1);
+                    batch4.vertex2f(-1.0f, +1.0f);
+                    batch4.texCoord2f(U1, V1);
+                    batch4.vertex2f(+1.0f, +1.0f);
+                    batch4.end();
                 }
 
                 addTriangleCount(shotLength * 2);
@@ -747,60 +753,62 @@ void            BoltSceneNode::BoltRenderNode::render()
         else if (BZDBCache::blend)
         {
             // draw corona
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch5;
+            batch5.begin(GL_TRIANGLE_STRIP);
             myColor4fv(mainColor);
-            glVertex2fv(core[1]);
+            batch5.vertex2fv(core[1]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[0]);
+            batch5.vertex2fv(corona[0]);
             myColor4fv(mainColor);
-            glVertex2fv(core[2]);
+            batch5.vertex2fv(core[2]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[1]);
+            batch5.vertex2fv(corona[1]);
             myColor4fv(mainColor);
-            glVertex2fv(core[3]);
+            batch5.vertex2fv(core[3]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[2]);
+            batch5.vertex2fv(corona[2]);
             myColor4fv(mainColor);
-            glVertex2fv(core[4]);
+            batch5.vertex2fv(core[4]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[3]);
+            batch5.vertex2fv(corona[3]);
             myColor4fv(mainColor);
-            glVertex2fv(core[5]);
+            batch5.vertex2fv(core[5]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[4]);
+            batch5.vertex2fv(corona[4]);
             myColor4fv(mainColor);
-            glVertex2fv(core[6]);
+            batch5.vertex2fv(core[6]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[5]);
+            batch5.vertex2fv(corona[5]);
             myColor4fv(mainColor);
-            glVertex2fv(core[7]);
+            batch5.vertex2fv(core[7]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[6]);
+            batch5.vertex2fv(corona[6]);
             myColor4fv(mainColor);
-            glVertex2fv(core[8]);
+            batch5.vertex2fv(core[8]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[7]);
+            batch5.vertex2fv(corona[7]);
             myColor4fv(mainColor);
-            glVertex2fv(core[1]);
+            batch5.vertex2fv(core[1]);
             myColor4fv(outerColor);
-            glVertex2fv(corona[0]);
-            glEnd(); // 18 verts -> 16 tris
+            batch5.vertex2fv(corona[0]);
+            batch5.end();
 
             // draw core
-            glBegin(GL_TRIANGLE_FAN);
+            static GLBatch batch6;
+            batch6.begin(GL_TRIANGLE_FAN);
             myColor4fv(innerColor);
-            glVertex2fv(core[0]);
+            batch6.vertex2fv(core[0]);
             myColor4fv(mainColor);
-            glVertex2fv(core[1]);
-            glVertex2fv(core[2]);
-            glVertex2fv(core[3]);
-            glVertex2fv(core[4]);
-            glVertex2fv(core[5]);
-            glVertex2fv(core[6]);
-            glVertex2fv(core[7]);
-            glVertex2fv(core[8]);
-            glVertex2fv(core[1]);
-            glEnd(); // 10 verts -> 8 tris
+            batch6.vertex2fv(core[1]);
+            batch6.vertex2fv(core[2]);
+            batch6.vertex2fv(core[3]);
+            batch6.vertex2fv(core[4]);
+            batch6.vertex2fv(core[5]);
+            batch6.vertex2fv(core[6]);
+            batch6.vertex2fv(core[7]);
+            batch6.vertex2fv(core[8]);
+            batch6.vertex2fv(core[1]);
+            batch6.end();
 
             addTriangleCount(24);
         }
@@ -809,43 +817,45 @@ void            BoltSceneNode::BoltRenderNode::render()
             // draw corona
             myColor4fv(coronaColor);
             myStipple(coronaColor[3]);
-            glBegin(GL_TRIANGLE_STRIP);
-            glVertex2fv(core[1]);
-            glVertex2fv(corona[0]);
-            glVertex2fv(core[2]);
-            glVertex2fv(corona[1]);
-            glVertex2fv(core[3]);
-            glVertex2fv(corona[2]);
-            glVertex2fv(core[4]);
-            glVertex2fv(corona[3]);
-            glVertex2fv(core[5]);
-            glVertex2fv(corona[4]);
-            glVertex2fv(core[6]);
-            glVertex2fv(corona[5]);
-            glVertex2fv(core[7]);
-            glVertex2fv(corona[6]);
-            glVertex2fv(core[8]);
-            glVertex2fv(corona[7]);
-            glVertex2fv(core[1]);
-            glVertex2fv(corona[0]);
-            glEnd(); // 18 verts -> 16 tris
+            static GLBatch batch7;
+            batch7.begin(GL_TRIANGLE_STRIP);
+            batch7.vertex2fv(core[1]);
+            batch7.vertex2fv(corona[0]);
+            batch7.vertex2fv(core[2]);
+            batch7.vertex2fv(corona[1]);
+            batch7.vertex2fv(core[3]);
+            batch7.vertex2fv(corona[2]);
+            batch7.vertex2fv(core[4]);
+            batch7.vertex2fv(corona[3]);
+            batch7.vertex2fv(core[5]);
+            batch7.vertex2fv(corona[4]);
+            batch7.vertex2fv(core[6]);
+            batch7.vertex2fv(corona[5]);
+            batch7.vertex2fv(core[7]);
+            batch7.vertex2fv(corona[6]);
+            batch7.vertex2fv(core[8]);
+            batch7.vertex2fv(corona[7]);
+            batch7.vertex2fv(core[1]);
+            batch7.vertex2fv(corona[0]);
+            batch7.end();
 
             // draw core
             myStipple(1.0f);
-            glBegin(GL_TRIANGLE_FAN);
+            static GLBatch batch8;
+            batch8.begin(GL_TRIANGLE_FAN);
             myColor4fv(innerColor);
-            glVertex2fv(core[0]);
+            batch8.vertex2fv(core[0]);
             myColor4fv(mainColor);
-            glVertex2fv(core[1]);
-            glVertex2fv(core[2]);
-            glVertex2fv(core[3]);
-            glVertex2fv(core[4]);
-            glVertex2fv(core[5]);
-            glVertex2fv(core[6]);
-            glVertex2fv(core[7]);
-            glVertex2fv(core[8]);
-            glVertex2fv(core[1]);
-            glEnd(); // 10 verts -> 8 tris
+            batch8.vertex2fv(core[1]);
+            batch8.vertex2fv(core[2]);
+            batch8.vertex2fv(core[3]);
+            batch8.vertex2fv(core[4]);
+            batch8.vertex2fv(core[5]);
+            batch8.vertex2fv(core[6]);
+            batch8.vertex2fv(core[7]);
+            batch8.vertex2fv(core[8]);
+            batch8.vertex2fv(core[1]);
+            batch8.end();
 
             myStipple(0.5f);
 

@@ -15,6 +15,7 @@
 
 // common impl headers
 #include "TextureManager.h"
+#include "GLBatch.h"
 #include "StateDatabase.h"
 #include "TimeKeeper.h"
 #include "Flag.h"
@@ -1053,21 +1054,22 @@ void FlashShotEffect::draw(const SceneRenderer &)
     glDepthMask(0);
 
     // draw me here
-    glBegin(GL_TRIANGLE_STRIP);
+    static GLBatch batch0;
+    batch0.begin(GL_TRIANGLE_STRIP);
 
-    glTexCoord2f(0,1);
-    glVertex3f(0,0,radius);
+    batch0.texCoord2f(0,1);
+    batch0.vertex3f(0,0,radius);
 
-    glTexCoord2f(0,0);
-    glVertex3f(0,length,radius);
+    batch0.texCoord2f(0,0);
+    batch0.vertex3f(0,length,radius);
 
-    glTexCoord2f(1,1);
-    glVertex3f(0,0,-radius);
+    batch0.texCoord2f(1,1);
+    batch0.vertex3f(0,0,-radius);
 
-    glTexCoord2f(1,0);
-    glVertex3f(0,length,-radius);
+    batch0.texCoord2f(1,0);
+    batch0.vertex3f(0,length,-radius);
 
-    glEnd();
+    batch0.end();
 
     glColor4f(1,1,1,1);
     glDepthMask(1);
@@ -1533,23 +1535,25 @@ bool SmokeGMPuffEffect::update ( float time )
     return false;
 }
 
+static GLBatch quadBatch;
+
 void QuadGuts ( float u0, float v0, float u1, float v1, float h, float v)
 {
-    glTexCoord2f(u0, v0);
-    glVertex2f(-h, -v);
-    glTexCoord2f(u1, v0);
-    glVertex2f(+h, -v);
-    glTexCoord2f(u0, v1);
-    glVertex2f(-h, +v);
-    glTexCoord2f(u1, v1);
-    glVertex2f(+h, +v);
+    quadBatch.texCoord2f(u0, v0);
+    quadBatch.vertex2f(-h, -v);
+    quadBatch.texCoord2f(u1, v0);
+    quadBatch.vertex2f(+h, -v);
+    quadBatch.texCoord2f(u0, v1);
+    quadBatch.vertex2f(-h, +v);
+    quadBatch.texCoord2f(u1, v1);
+    quadBatch.vertex2f(+h, +v);
 }
 
 void DrawTextureQuad ( float u0, float v0, float u1, float v1, float h, float v)
 {
-    glBegin(GL_TRIANGLE_STRIP);
+    quadBatch.begin(GL_TRIANGLE_STRIP);
     QuadGuts(u0,v0,u1,v1,h,v);
-    glEnd();
+    quadBatch.end();
 }
 
 void SmokeGMPuffEffect::draw(const SceneRenderer &)
@@ -1770,46 +1774,48 @@ static void drawRingXY(float rad, float z, float topsideOffset, float bottomUV,
         RadialToCartesian(nextAng,rad+topsideOffset,nextPos2);
 
         // the "inside"
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch2;
+        batch2.begin(GL_TRIANGLE_STRIP);
 
-        glNormal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
-        glTexCoord2f(0,bottomUV);
-        glVertex3f(thispos[0],thispos[1],0);
+        batch2.normal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
+        batch2.texCoord2f(0,bottomUV);
+        batch2.vertex3f(thispos[0],thispos[1],0);
 
-        glNormal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
-        glTexCoord2f(1,bottomUV);
-        glVertex3f(nextPos[0],nextPos[1],0);
+        batch2.normal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
+        batch2.texCoord2f(1,bottomUV);
+        batch2.vertex3f(nextPos[0],nextPos[1],0);
 
-        glNormal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
-        glTexCoord2f(0,topUV);
-        glVertex3f(thispos2[0],thispos2[1],z);
+        batch2.normal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
+        batch2.texCoord2f(0,topUV);
+        batch2.vertex3f(thispos2[0],thispos2[1],z);
 
-        glNormal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
-        glTexCoord2f(1,topUV);
-        glVertex3f(nextPos2[0],nextPos2[1],z);
+        batch2.normal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
+        batch2.texCoord2f(1,topUV);
+        batch2.vertex3f(nextPos2[0],nextPos2[1],z);
 
-        glEnd();
+        batch2.end();
 
         // the "outside"
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch3;
+        batch3.begin(GL_TRIANGLE_STRIP);
 
-        glNormal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
-        glTexCoord2f(0,topUV);
-        glVertex3f(thispos2[0],thispos2[1],z);
+        batch3.normal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
+        batch3.texCoord2f(0,topUV);
+        batch3.vertex3f(thispos2[0],thispos2[1],z);
 
-        glNormal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
-        glTexCoord2f(1,topUV);
-        glVertex3f(nextPos2[0],nextPos2[1],z);
+        batch3.normal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
+        batch3.texCoord2f(1,topUV);
+        batch3.vertex3f(nextPos2[0],nextPos2[1],z);
 
-        glNormal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
-        glTexCoord2f(0,bottomUV);
-        glVertex3f(thispos[0],thispos[1],0);
+        batch3.normal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
+        batch3.texCoord2f(0,bottomUV);
+        batch3.vertex3f(thispos[0],thispos[1],0);
 
-        glNormal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
-        glTexCoord2f(1,bottomUV);
-        glVertex3f(nextPos[0],nextPos[1],0);
+        batch3.normal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
+        batch3.texCoord2f(1,bottomUV);
+        batch3.vertex3f(nextPos[0],nextPos[1],0);
 
-        glEnd();
+        batch3.end();
 
     }
 }
@@ -1849,46 +1855,48 @@ static void drawRingYZ(float rad, float z, float topsideOffset, float bottomUV,
         RadialToCartesian(nextAng,rad+topsideOffset,nextPos2);
 
         // the "inside"
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch4;
+        batch4.begin(GL_TRIANGLE_STRIP);
 
-        glNormal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
-        glTexCoord2f(0,bottomUV);
-        glVertex3f(0,thispos[1],clampedZ(thispos[0],ZOffset));
+        batch4.normal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
+        batch4.texCoord2f(0,bottomUV);
+        batch4.vertex3f(0,thispos[1],clampedZ(thispos[0],ZOffset));
 
-        glNormal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
-        glTexCoord2f(1,bottomUV);
-        glVertex3f(0,nextPos[1],clampedZ(nextPos[0],ZOffset));
+        batch4.normal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
+        batch4.texCoord2f(1,bottomUV);
+        batch4.vertex3f(0,nextPos[1],clampedZ(nextPos[0],ZOffset));
 
-        glNormal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
-        glTexCoord2f(0,topUV);
-        glVertex3f(z,thispos2[1],clampedZ(thispos2[0],ZOffset));
+        batch4.normal3f(-thisNormal[0],-thisNormal[1],-thisNormal[2]);
+        batch4.texCoord2f(0,topUV);
+        batch4.vertex3f(z,thispos2[1],clampedZ(thispos2[0],ZOffset));
 
-        glNormal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
-        glTexCoord2f(1,topUV);
-        glVertex3f(z,nextPos2[1],clampedZ(nextPos2[0],ZOffset));
+        batch4.normal3f(-nextNormal[0],-nextNormal[1],-nextNormal[2]);
+        batch4.texCoord2f(1,topUV);
+        batch4.vertex3f(z,nextPos2[1],clampedZ(nextPos2[0],ZOffset));
 
-        glEnd();
+        batch4.end();
 
         // the "outside"
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch5;
+        batch5.begin(GL_TRIANGLE_STRIP);
 
-        glNormal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
-        glTexCoord2f(0,topUV);
-        glVertex3f(z,thispos2[1],clampedZ(thispos2[0],ZOffset));
+        batch5.normal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
+        batch5.texCoord2f(0,topUV);
+        batch5.vertex3f(z,thispos2[1],clampedZ(thispos2[0],ZOffset));
 
-        glNormal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
-        glTexCoord2f(1,topUV);
-        glVertex3f(z,nextPos2[1],clampedZ(nextPos2[0],ZOffset));
+        batch5.normal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
+        batch5.texCoord2f(1,topUV);
+        batch5.vertex3f(z,nextPos2[1],clampedZ(nextPos2[0],ZOffset));
 
-        glNormal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
-        glTexCoord2f(0,bottomUV);
-        glVertex3f(0,thispos[1],clampedZ(thispos[0],ZOffset));
+        batch5.normal3f(thisNormal[0],thisNormal[1],thisNormal[2]);
+        batch5.texCoord2f(0,bottomUV);
+        batch5.vertex3f(0,thispos[1],clampedZ(thispos[0],ZOffset));
 
-        glNormal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
-        glTexCoord2f(1,bottomUV);
-        glVertex3f(0,nextPos[1],clampedZ(nextPos[0],ZOffset));
+        batch5.normal3f(nextNormal[0],nextNormal[1],nextNormal[2]);
+        batch5.texCoord2f(1,bottomUV);
+        batch5.vertex3f(0,nextPos[1],clampedZ(nextPos[0],ZOffset));
 
-        glEnd();
+        batch5.end();
     }
 }
 

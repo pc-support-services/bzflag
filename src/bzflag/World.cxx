@@ -20,6 +20,7 @@
 
 /* common implementation headers */
 #include "BZDBCache.h"
+#include "GLBatch.h"
 #include "TextureManager.h"
 #include "FileManager.h"
 #include "CollisionManager.h"
@@ -1264,10 +1265,11 @@ static void drawLines (int count, float (*vertices)[3], int color)
         color = colorCount - 1;
     glColor4fv (colors[color]);
 
-    glBegin (GL_LINE_STRIP);
+    static GLBatch batch0;
+    batch0.begin(GL_LINE_STRIP);
     for (int i = 0; i < count; i++)
-        glVertex3fv (vertices[i]);
-    glEnd ();
+        batch0.vertex3fv (vertices[i]);
+    batch0.end();
 
     return;
 }
@@ -1315,33 +1317,35 @@ static void drawInsideOutsidePoints()
     glLineWidth(1.49f);
     glPointSize(4.49f);
 
-    glBegin(GL_POINTS);
+    static GLBatch batch0;
+    batch0.begin(GL_POINTS);
     {
-        glColor4f(0.0f, 1.0f, 0.0f, 0.8f);
+        batch0.color4f(0.0f, 1.0f, 0.0f, 0.8f);
         for (size_t i = 0; i < insides.size(); i++)
-            glVertex3fv(insides[i]);
-        glColor4f(1.0f, 0.0f, 0.0f, 0.8f);
+            batch0.vertex3fv(insides[i]);
+        batch0.color4f(1.0f, 0.0f, 0.0f, 0.8f);
         for (size_t i = 0; i < outsides.size(); i++)
-            glVertex3fv(outsides[i]);
+            batch0.vertex3fv(outsides[i]);
     }
-    glEnd();
+    batch0.end();
 
-    glBegin(GL_LINES);
+    static GLBatch batch1;
+    batch1.begin(GL_LINES);
     {
-        glColor4f(0.0f, 1.0f, 0.0f, 0.2f);
+        batch1.color4f(0.0f, 1.0f, 0.0f, 0.2f);
         for (size_t i = 0; i < insides.size(); i++)
         {
-            glVertex3f(insides[i][0], insides[i][1], 0.0f);
-            glVertex3fv(insides[i]);
+            batch1.vertex3f(insides[i][0], insides[i][1], 0.0f);
+            batch1.vertex3fv(insides[i]);
         }
-        glColor4f(1.0f, 0.0f, 0.0f, 0.2f);
+        batch1.color4f(1.0f, 0.0f, 0.0f, 0.2f);
         for (size_t i = 0; i < outsides.size(); i++)
         {
-            glVertex3f(outsides[i][0], outsides[i][1], 0.0f);
-            glVertex3fv(outsides[i]);
+            batch1.vertex3f(outsides[i][0], outsides[i][1], 0.0f);
+            batch1.vertex3fv(outsides[i]);
         }
     }
-    glEnd();
+    batch1.end();
 
     glPopAttrib();
 }

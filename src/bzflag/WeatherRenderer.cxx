@@ -15,6 +15,7 @@
 
 // common impl headers
 #include "TextureManager.h"
+#include "GLBatch.h"
 #include "StateDatabase.h"
 #include "BZDBCache.h"
 #include "TimeKeeper.h"
@@ -512,6 +513,8 @@ void WeatherRenderer::update(void)
 }
 
 
+static GLBatch rainBatch;
+
 void WeatherRenderer::draw(const SceneRenderer& sr)
 {
     if (!_CULLING_RAIN)
@@ -534,7 +537,7 @@ void WeatherRenderer::draw(const SceneRenderer& sr)
     {
         rainGState.setState();
         glPushMatrix();
-        glBegin(GL_LINES);
+        rainBatch.begin(GL_LINES);
     }
     else
         texturedRainState.setState();
@@ -579,7 +582,7 @@ void WeatherRenderer::draw(const SceneRenderer& sr)
 
     if (doLineRain)
     {
-        glEnd();
+        rainBatch.end();
         glPopMatrix();
     }
 
@@ -872,15 +875,15 @@ void WeatherRenderer::drawDrop(rain& drop, const SceneRenderer& sr)
         if (alphaVal < 0)
             alphaVal = 0;
 
-        glColor4f(rainColor[0][0], rainColor[0][1], rainColor[0][2], alphaVal);
-        glVertex3fv(drop.pos);
+        rainBatch.color4f(rainColor[0][0], rainColor[0][1], rainColor[0][2], alphaVal);
+        rainBatch.vertex3fv(drop.pos);
 
         alphaVal = rainColor[1][3] - alphaMod;
         if (alphaVal < 0)
             alphaVal = 0;
 
-        glColor4f(rainColor[1][0], rainColor[1][1], rainColor[1][2], alphaVal);
-        glVertex3f(drop.pos[0], drop.pos[1],
+        rainBatch.color4f(rainColor[1][0], rainColor[1][1], rainColor[1][2], alphaVal);
+        rainBatch.vertex3f(drop.pos[0], drop.pos[1],
                    drop.pos[2] + (rainSize[1] - (drop.speed * 0.15f)));
     }
     else
