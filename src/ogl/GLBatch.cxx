@@ -215,7 +215,12 @@ void GLBatch::end()
     const GLfloat* tptr = useTex && !texs.empty() ? &texs[0] : NULL;
     const GLfloat* nptr = useNorm && !norms.empty() ? &norms[0] : NULL;
 
-    glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+    // NOTE: no glPushClientAttrib/glPopClientAttrib here - this runs dozens
+    // of times per frame (radar + HUD), and the push/pop is pure overhead.
+    // Instead set every client-array enable bit explicitly below and leave
+    // the last state behind, exactly like the legacy immediate-mode path
+    // never touched array state at all. Consumers that care (renderRadar
+    // fast path) already manage their own enables around their draws.
 
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
@@ -249,71 +254,11 @@ void GLBatch::end()
     switch (mode)
     {
     case GL_TRIANGLE_FAN:
-    {
-        // expand fan to triangles: v0, vi, vi+1
-        std::vector<GLfloat> tv;
-        tv.reserve((count - 2) * 9);
-        for (int i = 1; (i + 1) < count; i++)
-        {
-            for (int k = 0; k < 3; k++)
-                tv.push_back(verts[k]);
-            for (int k = 0; k < 3; k++)
-                tv.push_back(verts[i * 3 + k]);
-            for (int k = 0; k < 3; k++)
-                tv.push_back(verts[(i + 1) * 3 + k]);
-            if (cptr != NULL)
-            {
-                // colors follow the same per-vertex stride
-                for (int k = 0; k < csize; k++)
-                    tv.push_back(cols[k]);
-                for (int k = 0; k < csize; k++)
-                    tv.push_back(cols[i * csize + k]);
-                for (int k = 0; k < csize; k++)
-                    tv.push_back(cols[(i + 1) * csize + k]);
-            }
-            if (tptr != NULL)
-            {
-                for (int k = 0; k < 2; k++)
-                    tv.push_back(texs[k]);
-                for (int k = 0; k < 2; k++)
-                    tv.push_back(texs[i * 2 + k]);
-                for (int k = 0; k < 2; k++)
-                    tv.push_back(texs[(i + 1) * 2 + k]);
-            }
-            if (nptr != NULL)
-            {
-                for (int k = 0; k < 3; k++)
-                    tv.push_back(norms[k]);
-                for (int k = 0; k < 3; k++)
-                    tv.push_back(norms[i * 3 + k]);
-                for (int k = 0; k < 3; k++)
-                    tv.push_back(norms[(i + 1) * 3 + k]);
-            }
-        }
-        // re-issue with interleaved layout
-        const int tstride = 3 + (csize > 0 ? csize : 0) + (useTex ? 2 : 0) +
-                            (useNorm ? 3 : 0);
-        const GLfloat* base = &tv[0];
-        const GLfloat* p = base;
-        glVertexPointer(3, GL_FLOAT, tstride * sizeof(GLfloat), p);
-        p += 3;
-        if (cptr != NULL)
-        {
-            glColorPointer(csize, GL_FLOAT, tstride * sizeof(GLfloat), p);
-            p += csize;
-        }
-        if (tptr != NULL)
-        {
-            glTexCoordPointer(2, GL_FLOAT, tstride * sizeof(GLfloat), p);
-            p += 2;
-        }
-        if (nptr != NULL)
-        {
-            glNormalPointer(GL_FLOAT, tstride * sizeof(GLfloat), p);
-        }
-        glDrawArrays(GL_TRIANGLES, 0, (int)tv.size() / tstride);
+        // GL 1.1 client arrays support GL_TRIANGLE_FAN directly (and
+        // GL 3.x core does not, but this codebase is compat-profile) -
+        // draw natively instead of re-tessellating every frame.
+        glDrawArrays(GL_TRIANGLE_FAN, 0, count);
         break;
-    }
 
     case GL_LINE_LOOP:
         // draw as a closed loop: strip + one closing segment
@@ -337,19 +282,20 @@ void GLBatch::end()
         break;
     }
 
-    glPopClientAttrib();
-
-    // restore the current attribute state to match glBegin/glEnd
-    // semantics (the current color/normal/texcoord after glEnd is the
-    // last one issued inside the block, not something internal)
+    // restore only the current attribute values to match glEnd semantics
+    // (the current color/normal/texcoord after glEnd is the last one issued
+    // inside the block, not something internal). Client array enables are
+    // left as-is: see note above - the legacy path never changed them.
     ::glColor4f(curColor[0], curColor[1], curColor[2], curColor[3]);
-    ::glNormal3f(curNorm[0], curNorm[1], curNorm[2]);
-    ::glTexCoord2f(curTex[0], curTex[1]);
     if (csize > 0 && csize < 4)
     {
         // legacy glColor3f leaves alpha as the pre-begin value
         ::glColor4f(curColor[0], curColor[1], curColor[2], savedColor[3]);
     }
+    if (useNorm)
+        ::glNormal3f(curNorm[0], curNorm[1], curNorm[2]);
+    if (useTex)
+        ::glTexCoord2f(curTex[0], curTex[1]);
 
     open = false;
 }
