@@ -31,6 +31,7 @@
 #include "ViewFrustum.h"
 
 #include "TextureManager.h"
+#include "GLBatch.h"
 
 #define _NO_LIST_ID 0xffffffff
 
@@ -819,14 +820,15 @@ void TankIDLSceneNode::IDLRenderNode::render()
         project[1][2] = origin[2] + dist * (cross[1][2] - origin[2]);
 
         // draw it
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch0;
+        batch0.begin(GL_TRIANGLE_STRIP);
         myColor4fv(innerColor);
-        glVertex3fv(cross[0]);
-        glVertex3fv(cross[1]);
+        batch0.vertex3fv(cross[0]);
+        batch0.vertex3fv(cross[1]);
         myColor4fv(outerColor);
-        glVertex3fv(project[0]);
-        glVertex3fv(project[1]);
-        glEnd();
+        batch0.vertex3fv(project[0]);
+        batch0.vertex3fv(project[1]);
+        batch0.end();
     }
 
     glPopMatrix();
@@ -1444,24 +1446,25 @@ void TankSceneNode::TankRenderNode::renderLights()
     sceneNode->lightsGState.setState();
     glPointSize(2.0f);
 
-    glBegin(GL_POINTS);
+    static GLBatch batch1;
+    batch1.begin(GL_POINTS);
     {
         const float* scale = TankGeometryMgr::getScaleFactor(sceneNode->tankSize);
 
         myColor3fv(lights[0]);
-        glVertex3f(lights[0][3] * scale[0],
+        batch1.vertex3f(lights[0][3] * scale[0],
                    lights[0][4] * scale[1],
                    lights[0][5] * scale[2]);
         myColor3fv(lights[1]);
-        glVertex3f(lights[1][3] * scale[0],
+        batch1.vertex3f(lights[1][3] * scale[0],
                    lights[1][4] * scale[1],
                    lights[1][5] * scale[2]);
         myColor3fv(lights[2]);
-        glVertex3f(lights[2][3] * scale[0],
+        batch1.vertex3f(lights[2][3] * scale[0],
                    lights[2][4] * scale[1],
                    lights[2][5] * scale[2]);
     }
-    glEnd();
+    batch1.end();
 
     glPointSize(1.0f);
     sceneNode->gstate.setState();
@@ -1514,15 +1517,16 @@ void TankSceneNode::TankRenderNode::renderJumpJets()
 
             RENDERER.getViewFrustum().executeBillboard();
 
-            glBegin(GL_TRIANGLES);
+            static GLBatch batch2;
+            batch2.begin(GL_TRIANGLES);
             {
                 for (int v = 0; v < 3; v++)
                 {
-                    glTexCoord2fv(jet[v].texcoord);
-                    glVertex3fv(jet[v].vertex);
+                    batch2.texCoord2fv(jet[v].texcoord);
+                    batch2.vertex3fv(jet[v].vertex);
                 }
             }
-            glEnd();
+            batch2.end();
         }
         glPopMatrix();
     }

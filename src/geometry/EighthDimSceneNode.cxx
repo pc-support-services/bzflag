@@ -23,6 +23,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 EighthDimSceneNode::EighthDimSceneNode(int numPolygons) :
     renderNode(this, numPolygons)
@@ -101,15 +102,16 @@ const GLfloat* EighthDimSceneNode::EighthDimRenderNode::getPosition() const
 void            EighthDimSceneNode::EighthDimRenderNode::render()
 {
     // draw polygons
-    glBegin(GL_TRIANGLES);
+    static GLBatch batch0;
+    batch0.begin(GL_TRIANGLES);
     for (int i = 0; i < numPolygons; i++)
     {
         myColor4fv(color[i]);
-        glVertex3fv(poly[i][0]);
-        glVertex3fv(poly[i][2]);
-        glVertex3fv(poly[i][1]);
+        batch0.vertex3fv(poly[i][0]);
+        batch0.vertex3fv(poly[i][2]);
+        batch0.vertex3fv(poly[i][1]);
     }
-    glEnd();
+    batch0.end();
 }
 
 void            EighthDimSceneNode::EighthDimRenderNode::setPolygon(

@@ -28,6 +28,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 BillboardSceneNode::BillboardSceneNode(const GLfloat pos[3]) :
     show(false),
@@ -379,16 +380,17 @@ void            BillboardSceneNode::BillboardRenderNode::render()
 
         // draw billboard
         myColor4fv(sceneNode->color);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(   u,    v);
+        static GLBatch batch0;
+        batch0.begin(GL_TRIANGLE_STRIP);
+        batch0.texCoord2f(   u,    v);
         glVertex2f  (-sceneNode->width, -sceneNode->height);
-        glTexCoord2f(du+u,    v);
+        batch0.texCoord2f(du+u,    v);
         glVertex2f  ( sceneNode->width, -sceneNode->height);
-        glTexCoord2f(   u, dv+v);
+        batch0.texCoord2f(   u, dv+v);
         glVertex2f  (-sceneNode->width,  sceneNode->height);
-        glTexCoord2f(du+u, dv+v);
+        batch0.texCoord2f(du+u, dv+v);
         glVertex2f  ( sceneNode->width,  sceneNode->height);
-        glEnd();
+        batch0.end();
     }
     glPopMatrix();
 

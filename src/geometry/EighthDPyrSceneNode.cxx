@@ -22,6 +22,7 @@
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
 #include "SceneRenderer.h"
+#include "GLBatch.h"
 
 const int       PyrPolygons = 20;
 
@@ -146,22 +147,24 @@ const GLfloat* EighthDPyrSceneNode::EighthDPyrRenderNode::getPosition() const
 void            EighthDPyrSceneNode::EighthDPyrRenderNode::render()
 {
     myColor3f(1.0f, 1.0f, 1.0f);
-    glBegin(GL_LINE_LOOP);
-    glVertex3fv(corner[0]);
-    glVertex3fv(corner[1]);
-    glVertex3fv(corner[2]);
-    glVertex3fv(corner[3]);
-    glEnd();
-    glBegin(GL_LINES);
-    glVertex3fv(corner[0]);
-    glVertex3fv(corner[4]);
-    glVertex3fv(corner[1]);
-    glVertex3fv(corner[4]);
-    glVertex3fv(corner[2]);
-    glVertex3fv(corner[4]);
-    glVertex3fv(corner[3]);
-    glVertex3fv(corner[4]);
-    glEnd();
+    static GLBatch batch0;
+    batch0.begin(GL_LINE_LOOP);
+    batch0.vertex3fv(corner[0]);
+    batch0.vertex3fv(corner[1]);
+    batch0.vertex3fv(corner[2]);
+    batch0.vertex3fv(corner[3]);
+    batch0.end();
+    static GLBatch batch1;
+    batch1.begin(GL_LINES);
+    batch1.vertex3fv(corner[0]);
+    batch1.vertex3fv(corner[4]);
+    batch1.vertex3fv(corner[1]);
+    batch1.vertex3fv(corner[4]);
+    batch1.vertex3fv(corner[2]);
+    batch1.vertex3fv(corner[4]);
+    batch1.vertex3fv(corner[3]);
+    batch1.vertex3fv(corner[4]);
+    batch1.end();
 }
 
 // Local Variables: ***

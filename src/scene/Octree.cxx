@@ -26,6 +26,7 @@
 #include "Intersect.h"
 
 #include "StateDatabase.h"
+#include "GLBatch.h"
 static bool F2BSORT = true;//FIXME
 
 
@@ -877,12 +878,13 @@ void OctreeNode::draw()
             points[c][2] = exts[z][2];
         }
         memcpy(points[4], points[0], sizeof(points[4]));
-        glBegin(GL_LINE_STRIP);
+        static GLBatch batch0;
+        batch0.begin(GL_LINE_STRIP);
 
         for (int i = 0; i < 5; i++)
-            glVertex3fv(points[i]);
+            batch0.vertex3fv(points[i]);
 
-        glEnd();
+        batch0.end();
     }
 
     // draw the corner edges
@@ -896,10 +898,11 @@ void OctreeNode::draw()
             points[z][1] = exts[y][1];
             points[z][2] = exts[z][2];
         }
-        glBegin(GL_LINE_STRIP);
-        glVertex3fv(points[0]);
-        glVertex3fv(points[1]);
-        glEnd();
+        static GLBatch batch1;
+        batch1.begin(GL_LINE_STRIP);
+        batch1.vertex3fv(points[0]);
+        batch1.vertex3fv(points[1]);
+        batch1.end();
     }
 
     // draw the kids
