@@ -20,6 +20,7 @@
 #include "TextureManager.h"
 #include "OpenGLTexture.h"
 #include "playing.h"
+#include "GLBatch.h"
 
 //
 // HUDuiJSTestLabel
@@ -60,21 +61,22 @@ void            HUDuiJSTestLabel::doRender()
     // draw the background
     const auto rangeLimit = float(BZDB.evalInt("jsRangeMax")) / 100.0f;
     glColor4fv(backgroundColor);
-    glBegin(GL_TRIANGLE_FAN);
-    glVertex2f(getX() + (1.0f - rangeLimit) / 2.0f * width, getY() + (1.0f + rangeLimit) / 2.0f * height);
-    glVertex2f(getX() + (1.0f - rangeLimit) / 2.0f * width, getY() + (1.0f - rangeLimit) / 2.0f * height);
-    glVertex2f(getX() + (1.0f + rangeLimit) / 2.0f * width, getY() + (1.0f - rangeLimit) / 2.0f * height);
-    glVertex2f(getX() + (1.0f + rangeLimit) / 2.0f * width, getY() + (1.0f + rangeLimit) / 2.0f * height);
-    glEnd();
+    static GLBatch batch;
+    batch.begin(GL_TRIANGLE_FAN);
+    batch.vertex2f(getX() + (1.0f - rangeLimit) / 2.0f * width, getY() + (1.0f + rangeLimit) / 2.0f * height);
+    batch.vertex2f(getX() + (1.0f - rangeLimit) / 2.0f * width, getY() + (1.0f - rangeLimit) / 2.0f * height);
+    batch.vertex2f(getX() + (1.0f + rangeLimit) / 2.0f * width, getY() + (1.0f - rangeLimit) / 2.0f * height);
+    batch.vertex2f(getX() + (1.0f + rangeLimit) / 2.0f * width, getY() + (1.0f + rangeLimit) / 2.0f * height);
+    batch.end();
 
     // draw a box around the full -1, 1 range
     glColor4fv(boxColor);
-    glBegin(GL_LINE_LOOP);
-    glVertex2f(getX(), getY() + height);
-    glVertex2f(getX(), getY());
-    glVertex2f(getX() + width, getY());
-    glVertex2f(getX() + width, getY() + height);
-    glEnd();
+    batch.begin(GL_LINE_LOOP);
+    batch.vertex2f(getX(), getY() + height);
+    batch.vertex2f(getX(), getY());
+    batch.vertex2f(getX() + width, getY());
+    batch.vertex2f(getX() + width, getY() + height);
+    batch.end();
 
     // draw the real cursor
     float jsx, jsy;
@@ -86,12 +88,13 @@ void            HUDuiJSTestLabel::doRender()
     glPushAttrib(GL_LINE_BIT);
     glLineWidth(realCursorThickness);
     glColor4fv(realCursorColor);
-    glBegin(GL_LINES);
-    glVertex2f(getX() + jsxTransformed - realCursorLength / 2.0f, getY() + jsyTransformed);
-    glVertex2f(getX() + jsxTransformed + realCursorLength / 2.0f, getY() + jsyTransformed);
-    glVertex2f(getX() + jsxTransformed, getY() + jsyTransformed - realCursorLength / 2.0f);
-    glVertex2f(getX() + jsxTransformed, getY() + jsyTransformed + realCursorLength / 2.0f);
-    glEnd();
+    static GLBatch batch2;
+    batch2.begin(GL_LINES);
+    batch2.vertex2f(getX() + jsxTransformed - realCursorLength / 2.0f, getY() + jsyTransformed);
+    batch2.vertex2f(getX() + jsxTransformed + realCursorLength / 2.0f, getY() + jsyTransformed);
+    batch2.vertex2f(getX() + jsxTransformed, getY() + jsyTransformed - realCursorLength / 2.0f);
+    batch2.vertex2f(getX() + jsxTransformed, getY() + jsyTransformed + realCursorLength / 2.0f);
+    batch2.end();
     glPopAttrib();
 
     // draw the modified cursor
@@ -100,12 +103,13 @@ void            HUDuiJSTestLabel::doRender()
     jsxTransformed = (1.0f + jsx * rangeLimit) / 2.0f * width;
     jsyTransformed = (1.0f - jsy * rangeLimit) / 2.0f * height;
     glColor4fv(modifiedCursorColor);
-    glBegin(GL_TRIANGLE_FAN);
-    glVertex2f(getX() + jsxTransformed, getY() + jsyTransformed - modifiedCursorLength / 2.0f);
-    glVertex2f(getX() + jsxTransformed + modifiedCursorLength / 2.0f, getY() + jsyTransformed);
-    glVertex2f(getX() + jsxTransformed, getY() + jsyTransformed + modifiedCursorLength / 2.0f);
-    glVertex2f(getX() + jsxTransformed - modifiedCursorLength / 2.0f, getY() + jsyTransformed);
-    glEnd();
+    static GLBatch batch3;
+    batch3.begin(GL_TRIANGLE_FAN);
+    batch3.vertex2f(getX() + jsxTransformed, getY() + jsyTransformed - modifiedCursorLength / 2.0f);
+    batch3.vertex2f(getX() + jsxTransformed + modifiedCursorLength / 2.0f, getY() + jsyTransformed);
+    batch3.vertex2f(getX() + jsxTransformed, getY() + jsyTransformed + modifiedCursorLength / 2.0f);
+    batch3.vertex2f(getX() + jsxTransformed - modifiedCursorLength / 2.0f, getY() + jsyTransformed);
+    batch3.end();
 }
 
 // Local Variables: ***

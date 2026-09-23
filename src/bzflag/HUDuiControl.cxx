@@ -21,6 +21,7 @@
 #include "Bundle.h"
 #include "TextureManager.h"
 #include "FontManager.h"
+#include "GLBatch.h"
 
 // local implementation headers
 #include "HUDui.h"
@@ -240,16 +241,17 @@ void            HUDuiControl::renderFocus()
         float imageXShift = 0.5f;
         float imageYShift = -fh2 * 0.2f;
         float outputSize = fh2;
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(u, v);
-        glVertex2f(x + imageXShift - outputSize, y + imageYShift);
-        glTexCoord2f(u + du, v);
-        glVertex2f(x + imageXShift, y + imageYShift);
-        glTexCoord2f(u, v + dv);
-        glVertex2f(x + imageXShift - outputSize, y + outputSize + imageYShift);
-        glTexCoord2f(u + du, v + dv);
-        glVertex2f(x + imageXShift, y + outputSize + imageYShift);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_TRIANGLE_STRIP);
+        batch.texCoord2f(u, v);
+        batch.vertex2f(x + imageXShift - outputSize, y + imageYShift);
+        batch.texCoord2f(u + du, v);
+        batch.vertex2f(x + imageXShift, y + imageYShift);
+        batch.texCoord2f(u, v + dv);
+        batch.vertex2f(x + imageXShift - outputSize, y + outputSize + imageYShift);
+        batch.texCoord2f(u + du, v + dv);
+        batch.vertex2f(x + imageXShift, y + outputSize + imageYShift);
+        batch.end();
 
         TimeKeeper nowTime = TimeKeeper::getCurrent();
         if (nowTime - lastTime > 0.07f)
@@ -263,18 +265,19 @@ void            HUDuiControl::renderFocus()
         fh2 = floorf(0.5f * fontHeight);
         gstate->setState();
         glColor3f(1.0f, 1.0f, 1.0f);
-        glBegin(GL_TRIANGLES);
-        glVertex2f(x - fh2 - fontHeight, y + fontHeight - 1.0f);
-        glVertex2f(x - fh2 - fontHeight, y);
-        glVertex2f(x - fh2 - 1.0f, y + 0.5f * (fontHeight - 1.0f));
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_TRIANGLES);
+        batch.vertex2f(x - fh2 - fontHeight, y + fontHeight - 1.0f);
+        batch.vertex2f(x - fh2 - fontHeight, y);
+        batch.vertex2f(x - fh2 - 1.0f, y + 0.5f * (fontHeight - 1.0f));
+        batch.end();
 
         glColor3f(0.0f, 0.0f, 0.0f);
-        glBegin(GL_LINE_LOOP);
-        glVertex2f(x - fh2 - fontHeight, y + fontHeight - 1.0f);
-        glVertex2f(x - fh2 - fontHeight, y);
-        glVertex2f(x - fh2 - 1.0f, y + 0.5f * (fontHeight - 1.0f));
-        glEnd();
+        batch.begin(GL_LINE_LOOP);
+        batch.vertex2f(x - fh2 - fontHeight, y + fontHeight - 1.0f);
+        batch.vertex2f(x - fh2 - fontHeight, y);
+        batch.vertex2f(x - fh2 - 1.0f, y + 0.5f * (fontHeight - 1.0f));
+        batch.end();
     }
 }
 

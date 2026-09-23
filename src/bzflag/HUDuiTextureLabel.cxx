@@ -19,6 +19,7 @@
 // common implementation headers
 #include "TextureManager.h"
 #include "OpenGLTexture.h"
+#include "GLBatch.h"
 
 //
 // HUDuiTextureLabel
@@ -61,16 +62,17 @@ void            HUDuiTextureLabel::doRender()
         const float yy = getY();
         gstate.setState();
         glColor3fv(textColor);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex2f(xx, yy - descent);
-        glTexCoord2f(1.0f, 0.0f);
-        glVertex2f(xx + _width, yy - descent);
-        glTexCoord2f(0.0f, 1.0f);
-        glVertex2f(xx, yy - descent + _height);
-        glTexCoord2f(1.0f, 1.0f);
-        glVertex2f(xx + _width, yy - descent + _height);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_TRIANGLE_STRIP);
+        batch.texCoord2f(0.0f, 0.0f);
+        batch.vertex2f(xx, yy - descent);
+        batch.texCoord2f(1.0f, 0.0f);
+        batch.vertex2f(xx + _width, yy - descent);
+        batch.texCoord2f(0.0f, 1.0f);
+        batch.vertex2f(xx, yy - descent + _height);
+        batch.texCoord2f(1.0f, 1.0f);
+        batch.vertex2f(xx + _width, yy - descent + _height);
+        batch.end();
     }
 }
 

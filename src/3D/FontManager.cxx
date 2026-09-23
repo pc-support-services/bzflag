@@ -29,6 +29,7 @@
 #include "StateDatabase.h"
 #include "BZDBCache.h"
 #include "OpenGLGState.h"
+#include "GLBatch.h"
 #include "TimeKeeper.h"
 #include "TextUtils.h"
 
@@ -364,10 +365,11 @@ void FontManager::drawString(float x, float y, float z, int faceID, float size,
                     glColor4fv(color);
                 // still have a translated matrix, these coordinates are
                 // with respect to the string just drawn
-                glBegin(GL_LINES);
-                glVertex2f(0.0f, 0.0f);
-                glVertex2f(width, 0.0f);
-                glEnd();
+                static GLBatch batch;
+                batch.begin(GL_LINES);
+                batch.vertex2f(0.0f, 0.0f);
+                batch.vertex2f(width, 0.0f);
+                batch.end();
                 glEnable(GL_TEXTURE_2D);
             }
             glDepthMask(depthMask);
