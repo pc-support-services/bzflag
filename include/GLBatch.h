@@ -69,6 +69,9 @@ private:
     GLfloat savedColor[4]; // current attributes at begin(), restored at end()
     GLfloat savedTex[2];
     GLfloat savedNorm[3];
+    bool savedColorArray;  // client-array enable bits at begin(), restored at end()
+    bool savedTexCoordArray;
+    bool savedNormalArray;
     std::vector<GLfloat> verts;
     std::vector<GLfloat> cols;
     std::vector<GLfloat> texs;

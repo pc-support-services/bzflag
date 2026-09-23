@@ -56,6 +56,17 @@ void GLBatch::begin(GLenum _mode)
     memcpy(curTex, savedTex, sizeof(curTex));
     glGetFloatv(GL_CURRENT_NORMAL, savedNorm);
     memcpy(curNorm, savedNorm, sizeof(curNorm));
+    // snapshot client-array enables: end() restores exactly these bits,
+    // so a flush never leaks array state into the next draw path (tanks
+    // draw through their own VBO pointers and depend on the enable bits
+    // they inherited, not ones a GLBatch flush left behind)
+    GLboolean b;
+    glGetBooleanv(GL_COLOR_ARRAY, &b);
+    savedColorArray = (b != GL_FALSE);
+    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &b);
+    savedTexCoordArray = (b != GL_FALSE);
+    glGetBooleanv(GL_NORMAL_ARRAY, &b);
+    savedNormalArray = (b != GL_FALSE);
     verts.clear();
     cols.clear();
     texs.clear();
@@ -282,10 +293,26 @@ void GLBatch::end()
         break;
     }
 
+    // restore the client-array enable bits to their begin() state so a
+    // flush never leaks array state into the next draw path (the tank VBO
+    // path inherits enable bits instead of setting its own). Cheap: three
+    // enable/disable calls, no attrib-stack round trip.
+    if (savedColorArray)
+        glEnableClientState(GL_COLOR_ARRAY);
+    else
+        glDisableClientState(GL_COLOR_ARRAY);
+    if (savedTexCoordArray)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    else
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    if (savedNormalArray)
+        glEnableClientState(GL_NORMAL_ARRAY);
+    else
+        glDisableClientState(GL_NORMAL_ARRAY);
+
     // restore only the current attribute values to match glEnd semantics
     // (the current color/normal/texcoord after glEnd is the last one issued
-    // inside the block, not something internal). Client array enables are
-    // left as-is: see note above - the legacy path never changed them.
+    // inside the block, not something internal).
     ::glColor4f(curColor[0], curColor[1], curColor[2], curColor[3]);
     if (csize > 0 && csize < 4)
     {
