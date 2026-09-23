@@ -30,6 +30,7 @@
 #include "TextUtils.h"
 #include "ErrorHandler.h"
 #include "global.h"
+#include "GLBatch.h"
 #ifdef _WIN32
 #  include <DirectoryNames.h>
 #endif
@@ -584,7 +585,8 @@ void            ControlPanel::render(SceneRenderer& _renderer)
 
     // nice border
     glColor4f(teamColor[0], teamColor[1], teamColor[2],outlineOpacity );
-    glBegin(GL_LINE_LOOP);
+    static GLBatch batch;
+    batch.begin(GL_LINE_LOOP);
     {
         long xpos;
         long ypos;
@@ -592,21 +594,21 @@ void            ControlPanel::render(SceneRenderer& _renderer)
         // bottom left
         xpos = x + messageAreaPixels[0] - 1;
         ypos = y + messageAreaPixels[1] - 1;
-        glVertex2f((float) xpos, (float) ypos);
+        batch.vertex2f((float) xpos, (float) ypos);
 
         // bottom right
         xpos += messageAreaPixels[2] + 1;
-        glVertex2f((float) xpos, (float) ypos);
+        batch.vertex2f((float) xpos, (float) ypos);
 
         // top right
         ypos += messageAreaPixels[3] + 1;
-        glVertex2f((float) xpos, (float) ypos);
+        batch.vertex2f((float) xpos, (float) ypos);
 
         // over to panel on left
         if (!tabsOnRight)
         {
             xpos = x + messageAreaPixels[0] + totalTabWidth;
-            glVertex2f((float) xpos, (float) ypos);
+            batch.vertex2f((float) xpos, (float) ypos);
         }
 
         // across the top from right to left
@@ -616,29 +618,29 @@ void            ControlPanel::render(SceneRenderer& _renderer)
             if (messageMode == MessageModes(tab))
             {
                 ypos += ay;
-                glVertex2f((float) xpos, (float) ypos);
+                batch.vertex2f((float) xpos, (float) ypos);
 
                 xpos -= long(tabTextWidth[tab]) + 1;
-                glVertex2f((float) xpos, (float) ypos);
+                batch.vertex2f((float) xpos, (float) ypos);
 
                 ypos -= ay;
-                glVertex2f((float) xpos, (float) ypos);
+                batch.vertex2f((float) xpos, (float) ypos);
             }
             else
             {
                 xpos -= long(tabTextWidth[tab]);
-                glVertex2f((float) xpos, (float) ypos);
+                batch.vertex2f((float) xpos, (float) ypos);
             }
         }
 
         // over from panel on right
         //    if (tabsOnRight) {
         xpos = x + messageAreaPixels[0] - 1;
-        glVertex2f((float) xpos, (float) ypos);
+        batch.vertex2f((float) xpos, (float) ypos);
         //    }
 
     }
-    glEnd();
+    batch.end();
 
     if (BZDBCache::blend)
         glDisable(GL_BLEND);

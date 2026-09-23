@@ -19,6 +19,7 @@
 #include "FontManager.h"
 #include "BZDBCache.h"
 #include "OpenGLGState.h"
+#include "GLBatch.h"
 #include "TextUtils.h"
 #include "TimeKeeper.h"
 
@@ -643,14 +644,15 @@ void ScoreboardRenderer::drawRoamTarget(float _x0, float _y0,
     glDisable(GL_BLEND);
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
-    glBegin(GL_LINES);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
     glColor4fv(c0);
-    glVertex2f(x0, y1);
-    glVertex2f(x1, y1);
+    batch.vertex2f(x0, y1);
+    batch.vertex2f(x1, y1);
     glColor4fv(c1);
-    glVertex2f(x0, y0);
-    glVertex2f(x1, y0);
-    glEnd();
+    batch.vertex2f(x0, y0);
+    batch.vertex2f(x1, y0);
+    batch.end();
     glPopAttrib();
 }
 

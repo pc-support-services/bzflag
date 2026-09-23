@@ -21,6 +21,7 @@
 #include "Bundle.h"
 #include "FontManager.h"
 #include "BZDBCache.h"
+#include "GLBatch.h"
 
 /* local implementation headers */
 #include "LocalPlayer.h"
@@ -680,44 +681,45 @@ void            HUDRenderer::drawGeometry()
     // white outline
     hudColor3Afv(whiteColor, 0.85f);
     glLineWidth(4.0f);
-    glBegin(GL_LINES);
-    glVertex3f(-rad,rad,0.03f);
-    glVertex3f(rad,-rad,0.02f);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
+    batch.vertex3f(-rad,rad,0.03f);
+    batch.vertex3f(rad,-rad,0.02f);
     // glVertex3f(-lockonSize*xFactor,lockonSize,0.02f);
     // glVertex3f(lockonSize*xFactor,0,0.02f);
-    glEnd();
+    batch.end();
 
-    glBegin(GL_LINES);
+    batch.begin(GL_LINES);
     for (float t = 0; t < 360; t += segmentation)
     {
         const float s = (t - segmentation);
         const float tRads = t * DEG2RADf;
         const float sRads = s * DEG2RADf;
-        glVertex3f(sinf(sRads) * rad, cosf(sRads) * rad, 0.02f);
-        glVertex3f(sinf(tRads) * rad, cosf(tRads) * rad, 0.02f);
+        batch.vertex3f(sinf(sRads) * rad, cosf(sRads) * rad, 0.02f);
+        batch.vertex3f(sinf(tRads) * rad, cosf(tRads) * rad, 0.02f);
     }
-    glEnd();
+    batch.end();
 
     // red X
     hudColor3Afv(redColor, 0.85f);
     glLineWidth(2.0f);
-    glBegin(GL_LINES);
-    glVertex3f(-rad,rad,0.03f);
-    glVertex3f(rad,-rad,0.02f);
+    batch.begin(GL_LINES);
+    batch.vertex3f(-rad,rad,0.03f);
+    batch.vertex3f(rad,-rad,0.02f);
     // glVertex3f(-lockonSize*xFactor,lockonSize,0.03f);
     //  glVertex3f(lockonSize*xFactor,0,0.02f);
-    glEnd();
+    batch.end();
 
-    glBegin(GL_LINES);
+    batch.begin(GL_LINES);
     for (float t = 0; t < 360; t += segmentation)
     {
         const float s = (t - segmentation);
         const float tRads = t * DEG2RADf;
         const float sRads = s * DEG2RADf;
-        glVertex3f(sinf(sRads) * rad, cosf(sRads) * rad, 0.02f);
-        glVertex3f(sinf(tRads) * rad, cosf(tRads) * rad, 0.02f);
+        batch.vertex3f(sinf(sRads) * rad, cosf(sRads) * rad, 0.02f);
+        batch.vertex3f(sinf(tRads) * rad, cosf(tRads) * rad, 0.02f);
     }
-    glEnd();
+    batch.end();
 
     glLineWidth(2.0f);
 }
@@ -1110,24 +1112,25 @@ void            HUDRenderer::renderCracks()
                  GLfloat(window.getViewHeight() >> 1), 0.0f);
     glLineWidth(3.0);
     hudColor3Afv(whiteColor, 1.0f);
-    glBegin(GL_LINES);
+    static GLBatch batch;
+    batch.begin(GL_LINES);
     for (int i = 0; i < HUDNumCracks; i++)
     {
-        glVertex2fv(cracks[i][0]);
-        glVertex2fv(cracks[i][1]);
+        batch.vertex2fv(cracks[i][0]);
+        batch.vertex2fv(cracks[i][1]);
         for (int j = 0; j < maxLevels-1; j++)
         {
             const int num = 1 << j;
             for (int k = 0; k < num; k++)
             {
-                glVertex2fv(cracks[i][num + k]);
-                glVertex2fv(cracks[i][2 * (num + k)]);
-                glVertex2fv(cracks[i][num + k]);
-                glVertex2fv(cracks[i][2 * (num + k) + 1]);
+                batch.vertex2fv(cracks[i][num + k]);
+                batch.vertex2fv(cracks[i][2 * (num + k)]);
+                batch.vertex2fv(cracks[i][num + k]);
+                batch.vertex2fv(cracks[i][2 * (num + k) + 1]);
             }
         }
     }
-    glEnd();
+    batch.end();
     glLineWidth(1.0);
     glPopMatrix();
 }
@@ -1275,17 +1278,18 @@ void HUDRenderer::drawWaypointMarker(float* color, float alpha, float* object,
     if (map[0] == -halfWidth && map[1] == halfHeight) // upper left
         glRotatef(180+45,0,0,1);
 
-    glBegin(GL_TRIANGLES);
-    glVertex2f(0,0);
-    glVertex2f(triangleSize,triangleSize);
-    glVertex2f(-triangleSize,triangleSize);
-    glEnd();
+    static GLBatch batch;
+    batch.begin(GL_TRIANGLES);
+    batch.vertex2f(0,0);
+    batch.vertex2f(triangleSize,triangleSize);
+    batch.vertex2f(-triangleSize,triangleSize);
+    batch.end();
 
-    glBegin(GL_LINE_STRIP);
-    glVertex3f(0,0,0.01f);
-    glVertex3f(triangleSize,triangleSize,0.01f);
-    glVertex3f(-triangleSize,triangleSize,0.01f);
-    glEnd();
+    batch.begin(GL_LINE_STRIP);
+    batch.vertex3f(0,0,0.01f);
+    batch.vertex3f(triangleSize,triangleSize,0.01f);
+    batch.vertex3f(-triangleSize,triangleSize,0.01f);
+    batch.end();
 
     if (friendly)
         drawGeometry();
@@ -1375,19 +1379,20 @@ void HUDRenderer::drawLockonMarker(float* color, float alpha, float* object,
 
     glLineWidth(3.0f);
 
-    glBegin(GL_LINE_STRIP);
-    glVertex2f(-lockonInset,lockonSize-lockonDeclination);
-    glVertex2f(-lockonSize,lockonSize);
-    glVertex2f(-lockonSize,-lockonSize);
-    glVertex2f(-lockonInset,-lockonSize+lockonDeclination);
-    glEnd();
+    static GLBatch batch;
+    batch.begin(GL_LINE_STRIP);
+    batch.vertex2f(-lockonInset,lockonSize-lockonDeclination);
+    batch.vertex2f(-lockonSize,lockonSize);
+    batch.vertex2f(-lockonSize,-lockonSize);
+    batch.vertex2f(-lockonInset,-lockonSize+lockonDeclination);
+    batch.end();
 
-    glBegin(GL_LINE_STRIP);
-    glVertex2f(lockonInset,lockonSize-lockonDeclination);
-    glVertex2f(lockonSize,lockonSize);
-    glVertex2f(lockonSize,-lockonSize);
-    glVertex2f(lockonInset,-lockonSize+lockonDeclination);
-    glEnd();
+    batch.begin(GL_LINE_STRIP);
+    batch.vertex2f(lockonInset,lockonSize-lockonDeclination);
+    batch.vertex2f(lockonSize,lockonSize);
+    batch.vertex2f(lockonSize,-lockonSize);
+    batch.vertex2f(lockonInset,-lockonSize+lockonDeclination);
+    batch.end();
 
     if (friendly)
         drawGeometry();
@@ -1430,22 +1435,23 @@ void            HUDRenderer::renderBox(SceneRenderer&)
 
     // draw targeting box
     hudColor3Afv(hudColor, 1.0f);
-    glBegin(GL_LINE_LOOP);
+    static GLBatch batch;
+    batch.begin(GL_LINE_LOOP);
     {
-        glVertex2i(centerx - noMotionSize, centery - noMotionSize);
-        glVertex2i(centerx + noMotionSize, centery - noMotionSize);
-        glVertex2i(centerx + noMotionSize, centery + noMotionSize);
-        glVertex2i(centerx - noMotionSize, centery + noMotionSize);
+        batch.vertex2f((GLfloat)(centerx - noMotionSize), (GLfloat)(centery - noMotionSize));
+        batch.vertex2f((GLfloat)(centerx + noMotionSize), (GLfloat)(centery - noMotionSize));
+        batch.vertex2f((GLfloat)(centerx + noMotionSize), (GLfloat)(centery + noMotionSize));
+        batch.vertex2f((GLfloat)(centerx - noMotionSize), (GLfloat)(centery + noMotionSize));
     }
-    glEnd();
-    glBegin(GL_LINE_LOOP);
+    batch.end();
+    batch.begin(GL_LINE_LOOP);
     {
-        glVertex2i(centerx - maxMotionSize, centery - maxMotionSize);
-        glVertex2i(centerx + maxMotionSize, centery - maxMotionSize);
-        glVertex2i(centerx + maxMotionSize, centery + maxMotionSize);
-        glVertex2i(centerx - maxMotionSize, centery + maxMotionSize);
+        batch.vertex2f((GLfloat)(centerx - maxMotionSize), (GLfloat)(centery - maxMotionSize));
+        batch.vertex2f((GLfloat)(centerx + maxMotionSize), (GLfloat)(centery - maxMotionSize));
+        batch.vertex2f((GLfloat)(centerx + maxMotionSize), (GLfloat)(centery + maxMotionSize));
+        batch.vertex2f((GLfloat)(centerx - maxMotionSize), (GLfloat)(centery + maxMotionSize));
     }
-    glEnd();
+    batch.end();
 
     // draw heading strip
     if (true /* always draw heading strip */)
@@ -1456,10 +1462,11 @@ void            HUDRenderer::renderBox(SceneRenderer&)
                   2 * maxMotionSize, 25 + (int)(headingFontSize + 0.5f));
 
         // draw heading mark
-        glBegin(GL_LINES);
-        glVertex2i(centerx, centery + maxMotionSize);
-        glVertex2i(centerx, centery + maxMotionSize - 5);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_LINES);
+        batch.vertex2f((GLfloat)centerx, (GLfloat)(centery + maxMotionSize));
+        batch.vertex2f((GLfloat)centerx, (GLfloat)(centery + maxMotionSize - 5));
+        batch.end();
 
         // figure out which marker is closest to center
         int baseMark = int(heading) / 10;
@@ -1480,17 +1487,18 @@ void            HUDRenderer::renderBox(SceneRenderer&)
         if (!smooth) basex = floorf(basex);
         glTranslatef((float)centerx - basex, (float)(centery + maxMotionSize), 0.0f);
         x = smooth ? 0.0f : -0.5f;
-        glBegin(GL_LINES);
+        static GLBatch batch2;
+        batch2.begin(GL_LINES);
         for (i = minMark; i <= maxMark; i++)
         {
-            glVertex2i((int)x, 0);
-            glVertex2i((int)x, 8);
+            batch2.vertex2f((GLfloat)x, 0.0f);
+            batch2.vertex2f((GLfloat)x, 8.0f);
             x += headingMarkSpacing;
-            glVertex2i((int)x, 0);
-            glVertex2i((int)x, 4);
+            batch2.vertex2f((GLfloat)x, 0.0f);
+            batch2.vertex2f((GLfloat)x, 4.0f);
             x += headingMarkSpacing;
         }
-        glEnd();
+        batch2.end();
 
         // back to our regular rendering mode
         if (smooth)
@@ -1543,30 +1551,31 @@ void            HUDRenderer::renderBox(SceneRenderer&)
                 // on the visible part of tape
                 GLfloat mx = maxMotionSize / headingOffset *
                              ((relAngle < 180.0f) ? relAngle : relAngle - 360.0f);
-                glBegin(GL_TRIANGLE_STRIP);
-                glVertex2f(mx, 0.0f);
-                glVertex2f(mx + 4.0f, 4.0f);
-                glVertex2f(mx - 4.0f, 4.0f);
-                glVertex2f(mx, 8.0f);
-                glEnd();
+                static GLBatch batch;
+                batch.begin(GL_TRIANGLE_STRIP);
+                batch.vertex2f(mx, 0.0f);
+                batch.vertex2f(mx + 4.0f, 4.0f);
+                batch.vertex2f(mx - 4.0f, 4.0f);
+                batch.vertex2f(mx, 8.0f);
+                batch.end();
             }
             else if (relAngle <= 180.0)
             {
                 // off to the right
-                glBegin(GL_TRIANGLES);
-                glVertex2f((float)maxMotionSize, 0.0f);
-                glVertex2f((float)maxMotionSize + 4.0f, 4.0f);
-                glVertex2f((float)maxMotionSize, 8.0f);
-                glEnd();
+                batch.begin(GL_TRIANGLES);
+                batch.vertex2f((float)maxMotionSize, 0.0f);
+                batch.vertex2f((float)maxMotionSize + 4.0f, 4.0f);
+                batch.vertex2f((float)maxMotionSize, 8.0f);
+                batch.end();
             }
             else
             {
                 // off to the left
-                glBegin(GL_TRIANGLES);
-                glVertex2f(-(float)maxMotionSize, 0.0f);
-                glVertex2f(-(float)maxMotionSize, 8.0f);
-                glVertex2f(-(float)maxMotionSize - 4.0f, 4.0f);
-                glEnd();
+                batch.begin(GL_TRIANGLES);
+                batch.vertex2f(-(float)maxMotionSize, 0.0f);
+                batch.vertex2f(-(float)maxMotionSize, 8.0f);
+                batch.vertex2f(-(float)maxMotionSize - 4.0f, 4.0f);
+                batch.end();
             }
         }
         markers.clear();
@@ -1584,10 +1593,11 @@ void            HUDRenderer::renderBox(SceneRenderer&)
 
         // draw altitude mark
         hudColor3Afv(hudColor, 1.0f);
-        glBegin(GL_LINES);
-        glVertex2i(centerx + maxMotionSize, centery);
-        glVertex2i(centerx + maxMotionSize - 5, centery);
-        glEnd();
+        static GLBatch batch;
+        batch.begin(GL_LINES);
+        batch.vertex2f((GLfloat)(centerx + maxMotionSize), (GLfloat)centery);
+        batch.vertex2f((GLfloat)(centerx + maxMotionSize - 5), (GLfloat)centery);
+        batch.end();
 
         // figure out which marker is closest to center
         int baseMark = int(altitude) / 5;
@@ -1613,14 +1623,15 @@ void            HUDRenderer::renderBox(SceneRenderer&)
         glTranslatef((float)(centerx + maxMotionSize),
                      (float)centery - basey, 0.0f);
         y = smooth ? 0.0f : -0.5f;
-        glBegin(GL_LINES);
+        static GLBatch batch2;
+        batch2.begin(GL_LINES);
         for (i = minMark; i <= maxMark; i++)
         {
-            glVertex2i(0, (int)y);
-            glVertex2i(8, (int)y);
+            batch2.vertex2f(0.0f, (GLfloat)y);
+            batch2.vertex2f(8.0f, (GLfloat)y);
             y += altitudeMarkSpacing;
         }
-        glEnd();
+        batch2.end();
 
         // back to our regular rendering mode
         if (smooth)
