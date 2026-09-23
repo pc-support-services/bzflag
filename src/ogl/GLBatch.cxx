@@ -234,9 +234,15 @@ void GLBatch::end()
         glColor4f(curColor[0], curColor[1], curColor[2], curColor[3]);
     }
     if (tptr != NULL)
+    {
         glTexCoordPointer(2, GL_FLOAT, 0, tptr);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
     if (nptr != NULL)
+    {
         glNormalPointer(GL_FLOAT, 0, nptr);
+        glEnableClientState(GL_NORMAL_ARRAY);
+    }
 
     const int count = (int)verts.size() / stride;
 
