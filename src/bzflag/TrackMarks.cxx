@@ -16,6 +16,7 @@
 
 // Common interface headers
 #include "StateDatabase.h"
+#include "GLBatch.h"
 #include "BZDBCache.h"
 #include "Obstacle.h"
 #include "CollisionManager.h"
@@ -688,18 +689,19 @@ static void drawPuddle(const TrackEntry& te)
         glRotatef(te.angle, 0.0f, 0.0f, 1.0f);
         glTranslatef(0.0f, +offset, 0.0f);
         glScalef(scale, scale, 1.0f);
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch0;
+        batch0.begin(GL_TRIANGLE_STRIP);
         {
-            glTexCoord2f(0.0f, 0.0f);
-            glVertex3f(-1.0f, -1.0f, 0.0f);
-            glTexCoord2f(1.0f, 0.0f);
-            glVertex3f(+1.0f, -1.0f, 0.0f);
-            glTexCoord2f(0.0f, 1.0f);
-            glVertex3f(-1.0f, +1.0f, 0.0f);
-            glTexCoord2f(1.0f, 1.0f);
-            glVertex3f(+1.0f, +1.0f, 0.0f);
+            batch0.texCoord2f(0.0f, 0.0f);
+            batch0.vertex3f(-1.0f, -1.0f, 0.0f);
+            batch0.texCoord2f(1.0f, 0.0f);
+            batch0.vertex3f(+1.0f, -1.0f, 0.0f);
+            batch0.texCoord2f(0.0f, 1.0f);
+            batch0.vertex3f(-1.0f, +1.0f, 0.0f);
+            batch0.texCoord2f(1.0f, 1.0f);
+            batch0.vertex3f(+1.0f, +1.0f, 0.0f);
         }
-        glEnd();
+        batch0.end();
     }
     glPopMatrix();
 
@@ -713,18 +715,19 @@ static void drawPuddle(const TrackEntry& te)
             glTranslatef(0.0f, -offset, 0.0f);
             glScalef(scale, scale, 1.0f);
 
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch1;
+            batch1.begin(GL_TRIANGLE_STRIP);
             {
-                glTexCoord2f(0.0f, 0.0f);
-                glVertex3f(-1.0f, -1.0f, 0.0f);
-                glTexCoord2f(1.0f, 0.0f);
-                glVertex3f(+1.0f, -1.0f, 0.0f);
-                glTexCoord2f(0.0f, 1.0f);
-                glVertex3f(-1.0f, +1.0f, 0.0f);
-                glTexCoord2f(1.0f, 1.0f);
-                glVertex3f(+1.0f, +1.0f, 0.0f);
+                batch1.texCoord2f(0.0f, 0.0f);
+                batch1.vertex3f(-1.0f, -1.0f, 0.0f);
+                batch1.texCoord2f(1.0f, 0.0f);
+                batch1.vertex3f(+1.0f, -1.0f, 0.0f);
+                batch1.texCoord2f(0.0f, 1.0f);
+                batch1.vertex3f(-1.0f, +1.0f, 0.0f);
+                batch1.texCoord2f(1.0f, 1.0f);
+                batch1.vertex3f(+1.0f, +1.0f, 0.0f);
             }
-            glEnd();
+            batch1.end();
         }
         glPopMatrix();
     }

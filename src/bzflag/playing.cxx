@@ -40,6 +40,7 @@
 #include "bzsignal.h"
 #include "CommandsStandard.h"
 #include "DirectoryNames.h"
+#include "GLBatch.h"
 #include "ErrorHandler.h"
 #include "FileManager.h"
 #include "FlagSceneNode.h"
@@ -5719,12 +5720,13 @@ static void renderRoamMouse()
     static const float color1[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     glLineWidth(1.49f);
-    glBegin(GL_LINES);
-    glColor4fv(color0);
-    glVertex2i(xc, yc);
-    glColor4fv(color1);
-    glVertex2i(mx, my);
-    glEnd();
+    static GLBatch batch0;
+    batch0.begin(GL_LINES);
+    batch0.color4fv(color0);
+    batch0.vertex2f((GLfloat)xc, (GLfloat)yc);
+    batch0.color4fv(color1);
+    batch0.vertex2f((GLfloat)mx, (GLfloat)my);
+    batch0.end();
 
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -6465,10 +6467,11 @@ void drawFrame(const float dt)
             glColor3f(1.0f, 1.0f, 1.0f);
             for (int y=0; y<=height; y+=2)
             {
-                glBegin(GL_LINES);
-                glVertex2i(0, y);
-                glVertex2i(width, y);
-                glEnd();
+                static GLBatch batch1;
+                batch1.begin(GL_LINES);
+                batch1.vertex2f(0.0f, (GLfloat)y);
+                batch1.vertex2f((GLfloat)width, (GLfloat)y);
+                batch1.end();
             }
 
             // draw except where the stencil pattern is 0x1

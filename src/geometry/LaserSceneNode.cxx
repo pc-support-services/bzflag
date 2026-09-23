@@ -21,6 +21,7 @@
 
 // common implementation headers
 #include "StateDatabase.h"
+#include "GLBatch.h"
 #include "BZDBCache.h"
 
 // FIXME (SceneRenderer.cxx is in src/bzflag)
@@ -221,38 +222,41 @@ void LaserSceneNode::LaserRenderNode::renderFlatLaser()
     if (sceneNode->texturing)
     {
         myColor3f(1.0f, 1.0f, 1.0f);
-        glBegin(GL_TRIANGLE_FAN);
-        glTexCoord2f(0.5f,  0.5f);
-        glVertex3f(  0.0f,  0.0f,  0.0f);
-        glTexCoord2f(0.0f,  0.0f);
-        glVertex3f(  0.0f,  0.0f,  1.0f);
-        glVertex3f(  0.0f,  1.0f,  0.0f);
-        glVertex3f(  0.0f,  0.0f, -1.0f);
-        glVertex3f(  0.0f, -1.0f,  0.0f);
-        glVertex3f(  0.0f,  0.0f,  1.0f);
-        glEnd(); // 6 verts -> 4 tris
+        static GLBatch batch0;
+        batch0.begin(GL_TRIANGLE_FAN);
+        batch0.texCoord2f(0.5f,  0.5f);
+        batch0.vertex3f(  0.0f,  0.0f,  0.0f);
+        batch0.texCoord2f(0.0f,  0.0f);
+        batch0.vertex3f(  0.0f,  0.0f,  1.0f);
+        batch0.vertex3f(  0.0f,  1.0f,  0.0f);
+        batch0.vertex3f(  0.0f,  0.0f, -1.0f);
+        batch0.vertex3f(  0.0f, -1.0f,  0.0f);
+        batch0.vertex3f(  0.0f,  0.0f,  1.0f);
+        batch0.end();
 
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0.0f,  0.0f);
-        glVertex3f(  0.0f,  0.0f,  1.0f);
-        glTexCoord2f(0.0f,  1.0f);
-        glVertex3f(   len,  0.0f,  1.0f);
-        glTexCoord2f(1.0f,  0.0f);
-        glVertex3f(  0.0f,  0.0f, -1.0f);
-        glTexCoord2f(1.0f,  1.0f);
-        glVertex3f(   len,  0.0f, -1.0f);
-        glEnd();
+        static GLBatch batch1;
+        batch1.begin(GL_TRIANGLE_STRIP);
+        batch1.texCoord2f(0.0f,  0.0f);
+        batch1.vertex3f(  0.0f,  0.0f,  1.0f);
+        batch1.texCoord2f(0.0f,  1.0f);
+        batch1.vertex3f(   len,  0.0f,  1.0f);
+        batch1.texCoord2f(1.0f,  0.0f);
+        batch1.vertex3f(  0.0f,  0.0f, -1.0f);
+        batch1.texCoord2f(1.0f,  1.0f);
+        batch1.vertex3f(   len,  0.0f, -1.0f);
+        batch1.end();
 
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0.0f,  0.0f);
-        glVertex3f(  0.0f,  1.0f,  0.0f);
-        glTexCoord2f(0.0f,  1.0f);
-        glVertex3f(   len,  1.0f,  0.0f);
-        glTexCoord2f(1.0f,  0.0f);
-        glVertex3f(  0.0f, -1.0f,  0.0f);
-        glTexCoord2f(1.0f,  1.0f);
-        glVertex3f(   len, -1.0f,  0.0f);
-        glEnd(); // 8 verts -> 4 tris
+        static GLBatch batch2;
+        batch2.begin(GL_TRIANGLE_STRIP);
+        batch2.texCoord2f(0.0f,  0.0f);
+        batch2.vertex3f(  0.0f,  1.0f,  0.0f);
+        batch2.texCoord2f(0.0f,  1.0f);
+        batch2.vertex3f(   len,  1.0f,  0.0f);
+        batch2.texCoord2f(1.0f,  0.0f);
+        batch2.vertex3f(  0.0f, -1.0f,  0.0f);
+        batch2.texCoord2f(1.0f,  1.0f);
+        batch2.vertex3f(   len, -1.0f,  0.0f);
+        batch2.end();
 
         addTriangleCount(8);
     }
@@ -261,34 +265,36 @@ void LaserSceneNode::LaserRenderNode::renderFlatLaser()
     {
         // draw beam
         myColor4f(1.0f, 0.25f, 0.0f, 0.85f);
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch3;
+        batch3.begin(GL_TRIANGLE_STRIP);
         {
-            glVertex3f(  0.0f, geom[0][0], geom[0][1]);
-            glVertex3f(   len, geom[0][0], geom[0][1]);
-            glVertex3f(  0.0f, geom[1][0], geom[1][1]);
-            glVertex3f(   len, geom[1][0], geom[1][1]);
-            glVertex3f(  0.0f, geom[2][0], geom[2][1]);
-            glVertex3f(   len, geom[2][0], geom[2][1]);
-            glVertex3f(  0.0f, geom[3][0], geom[3][1]);
-            glVertex3f(   len, geom[3][0], geom[3][1]);
-            glVertex3f(  0.0f, geom[4][0], geom[4][1]);
-            glVertex3f(   len, geom[4][0], geom[4][1]);
-            glVertex3f(  0.0f, geom[5][0], geom[5][1]);
-            glVertex3f(   len, geom[5][0], geom[5][1]);
-            glVertex3f(  0.0f, geom[0][0], geom[0][1]);
-            glVertex3f(   len, geom[0][0], geom[0][1]);
+            batch3.vertex3f(  0.0f, geom[0][0], geom[0][1]);
+            batch3.vertex3f(   len, geom[0][0], geom[0][1]);
+            batch3.vertex3f(  0.0f, geom[1][0], geom[1][1]);
+            batch3.vertex3f(   len, geom[1][0], geom[1][1]);
+            batch3.vertex3f(  0.0f, geom[2][0], geom[2][1]);
+            batch3.vertex3f(   len, geom[2][0], geom[2][1]);
+            batch3.vertex3f(  0.0f, geom[3][0], geom[3][1]);
+            batch3.vertex3f(   len, geom[3][0], geom[3][1]);
+            batch3.vertex3f(  0.0f, geom[4][0], geom[4][1]);
+            batch3.vertex3f(   len, geom[4][0], geom[4][1]);
+            batch3.vertex3f(  0.0f, geom[5][0], geom[5][1]);
+            batch3.vertex3f(   len, geom[5][0], geom[5][1]);
+            batch3.vertex3f(  0.0f, geom[0][0], geom[0][1]);
+            batch3.vertex3f(   len, geom[0][0], geom[0][1]);
         }
-        glEnd(); // 14 verts -> 12 tris
+        batch3.end();
 
         // also draw a line down the middle (so the beam is visible even
         // if very far away).  this will also give the beam an extra bright
         // center.
-        glBegin(GL_LINES);
+        static GLBatch batch4;
+        batch4.begin(GL_LINES);
         {
-            glVertex3f(  0.0f, 0.0f, 0.0f);
-            glVertex3f(   len, 0.0f, 0.0f);
+            batch4.vertex3f(  0.0f, 0.0f, 0.0f);
+            batch4.vertex3f(   len, 0.0f, 0.0f);
         }
-        glEnd(); // count 1 line as 1 tri
+        batch4.end();
 
         addTriangleCount(13);
     }

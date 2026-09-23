@@ -19,6 +19,7 @@
 
 // common implementation headers
 #include "StateDatabase.h"
+#include "GLBatch.h"
 #include "BZDBCache.h"
 
 // local implementation headers
@@ -150,22 +151,23 @@ void            FlagWarpSceneNode::FlagWarpRenderNode::render()
             GLfloat s = sceneNode->size - 0.05f * float(i);
             if (s < 0.0f) break;
             myColor4f(color[i][0], color[i][1], color[i][2], FlagWarpAlpha);
-            glBegin(GL_TRIANGLE_FAN);
-            glVertex2f(0.0f, 0.0f);
-            glVertex2f(s * geom[0][0], s * geom[0][1]);
-            glVertex2f(s * geom[11][0], s * geom[11][1]);
-            glVertex2f(s * geom[10][0], s * geom[10][1]);
-            glVertex2f(s * geom[9][0], s * geom[9][1]);
-            glVertex2f(s * geom[8][0], s * geom[8][1]);
-            glVertex2f(s * geom[7][0], s * geom[7][1]);
-            glVertex2f(s * geom[6][0], s * geom[6][1]);
-            glVertex2f(s * geom[5][0], s * geom[5][1]);
-            glVertex2f(s * geom[4][0], s * geom[4][1]);
-            glVertex2f(s * geom[3][0], s * geom[3][1]);
-            glVertex2f(s * geom[2][0], s * geom[2][1]);
-            glVertex2f(s * geom[1][0], s * geom[1][1]);
-            glVertex2f(s * geom[0][0], s * geom[0][1]);
-            glEnd(); // 14 verts -> 12 tris
+            static GLBatch batch0;
+            batch0.begin(GL_TRIANGLE_FAN);
+            batch0.vertex2f(0.0f, 0.0f);
+            batch0.vertex2f(s * geom[0][0], s * geom[0][1]);
+            batch0.vertex2f(s * geom[11][0], s * geom[11][1]);
+            batch0.vertex2f(s * geom[10][0], s * geom[10][1]);
+            batch0.vertex2f(s * geom[9][0], s * geom[9][1]);
+            batch0.vertex2f(s * geom[8][0], s * geom[8][1]);
+            batch0.vertex2f(s * geom[7][0], s * geom[7][1]);
+            batch0.vertex2f(s * geom[6][0], s * geom[6][1]);
+            batch0.vertex2f(s * geom[5][0], s * geom[5][1]);
+            batch0.vertex2f(s * geom[4][0], s * geom[4][1]);
+            batch0.vertex2f(s * geom[3][0], s * geom[3][1]);
+            batch0.vertex2f(s * geom[2][0], s * geom[2][1]);
+            batch0.vertex2f(s * geom[1][0], s * geom[1][1]);
+            batch0.vertex2f(s * geom[0][0], s * geom[0][1]);
+            batch0.end();
             addTriangleCount(12);
             glTranslatef(0.0f, 0.0f, -0.01f);
         }
@@ -177,22 +179,23 @@ void            FlagWarpSceneNode::FlagWarpRenderNode::render()
             GLfloat s = sceneNode->size - 0.05f * float(i);
             if (s < 0.0f) break;
             myColor4f(color[i][0], color[i][1], color[i][2], FlagWarpAlpha);
-            glBegin(GL_TRIANGLE_FAN);
-            glVertex2f(0.0f, 0.0f);
-            glVertex2f(s * geom[0][0], s * geom[0][1]);
-            glVertex2f(s * geom[1][0], s * geom[1][1]);
-            glVertex2f(s * geom[2][0], s * geom[2][1]);
-            glVertex2f(s * geom[3][0], s * geom[3][1]);
-            glVertex2f(s * geom[4][0], s * geom[4][1]);
-            glVertex2f(s * geom[5][0], s * geom[5][1]);
-            glVertex2f(s * geom[6][0], s * geom[6][1]);
-            glVertex2f(s * geom[7][0], s * geom[7][1]);
-            glVertex2f(s * geom[8][0], s * geom[8][1]);
-            glVertex2f(s * geom[9][0], s * geom[9][1]);
-            glVertex2f(s * geom[10][0], s * geom[10][1]);
-            glVertex2f(s * geom[11][0], s * geom[11][1]);
-            glVertex2f(s * geom[0][0], s * geom[0][1]);
-            glEnd(); // 14 verts -> 12 tris
+            static GLBatch batch1;
+            batch1.begin(GL_TRIANGLE_FAN);
+            batch1.vertex2f(0.0f, 0.0f);
+            batch1.vertex2f(s * geom[0][0], s * geom[0][1]);
+            batch1.vertex2f(s * geom[1][0], s * geom[1][1]);
+            batch1.vertex2f(s * geom[2][0], s * geom[2][1]);
+            batch1.vertex2f(s * geom[3][0], s * geom[3][1]);
+            batch1.vertex2f(s * geom[4][0], s * geom[4][1]);
+            batch1.vertex2f(s * geom[5][0], s * geom[5][1]);
+            batch1.vertex2f(s * geom[6][0], s * geom[6][1]);
+            batch1.vertex2f(s * geom[7][0], s * geom[7][1]);
+            batch1.vertex2f(s * geom[8][0], s * geom[8][1]);
+            batch1.vertex2f(s * geom[9][0], s * geom[9][1]);
+            batch1.vertex2f(s * geom[10][0], s * geom[10][1]);
+            batch1.vertex2f(s * geom[11][0], s * geom[11][1]);
+            batch1.vertex2f(s * geom[0][0], s * geom[0][1]);
+            batch1.end();
             addTriangleCount(12);
             glTranslatef(0.0f, 0.0f, 0.01f);
         }

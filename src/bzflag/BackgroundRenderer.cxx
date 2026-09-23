@@ -31,6 +31,7 @@
 #include "MainWindow.h"
 #include "SceneNode.h"
 #include "effectsRenderer.h"
+#include "GLBatch.h"
 
 static const GLfloat    squareShape[4][2] =
 {
@@ -850,123 +851,129 @@ void BackgroundRenderer::drawSkybox()
         tm.bind(skyboxTexID[5]); // bottom
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, skyboxWrapMode);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, skyboxWrapMode);
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch0;
+        batch0.begin(GL_TRIANGLE_STRIP);
         {
-            glTexCoord2fv(txcds[0]);
-            glColor3fv(color[2]);
-            glVertex3fv(verts[2]);
-            glTexCoord2fv(txcds[1]);
-            glColor3fv(color[3]);
-            glVertex3fv(verts[3]);
-            glTexCoord2fv(txcds[3]);
-            glColor3fv(color[1]);
-            glVertex3fv(verts[1]);
-            glTexCoord2fv(txcds[2]);
-            glColor3fv(color[0]);
-            glVertex3fv(verts[0]);
+            batch0.texCoord2fv(txcds[0]);
+            batch0.color3fv(color[2]);
+            batch0.vertex3fv(verts[2]);
+            batch0.texCoord2fv(txcds[1]);
+            batch0.color3fv(color[3]);
+            batch0.vertex3fv(verts[3]);
+            batch0.texCoord2fv(txcds[3]);
+            batch0.color3fv(color[1]);
+            batch0.vertex3fv(verts[1]);
+            batch0.texCoord2fv(txcds[2]);
+            batch0.color3fv(color[0]);
+            batch0.vertex3fv(verts[0]);
         }
-        glEnd();
+        batch0.end();
     }
 
     tm.bind(skyboxTexID[4]); // top
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, skyboxWrapMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, skyboxWrapMode);
-    glBegin(GL_TRIANGLE_STRIP);
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLE_STRIP);
     {
-        glTexCoord2fv(txcds[0]);
-        glColor3fv(color[5]);
-        glVertex3fv(verts[5]);
-        glTexCoord2fv(txcds[1]);
-        glColor3fv(color[4]);
-        glVertex3fv(verts[4]);
-        glTexCoord2fv(txcds[3]);
-        glColor3fv(color[6]);
-        glVertex3fv(verts[6]);
-        glTexCoord2fv(txcds[2]);
-        glColor3fv(color[7]);
-        glVertex3fv(verts[7]);
+        batch1.texCoord2fv(txcds[0]);
+        batch1.color3fv(color[5]);
+        batch1.vertex3fv(verts[5]);
+        batch1.texCoord2fv(txcds[1]);
+        batch1.color3fv(color[4]);
+        batch1.vertex3fv(verts[4]);
+        batch1.texCoord2fv(txcds[3]);
+        batch1.color3fv(color[6]);
+        batch1.vertex3fv(verts[6]);
+        batch1.texCoord2fv(txcds[2]);
+        batch1.color3fv(color[7]);
+        batch1.vertex3fv(verts[7]);
     }
-    glEnd();
+    batch1.end();
 
     tm.bind(skyboxTexID[0]); // left
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, skyboxWrapMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, skyboxWrapMode);
-    glBegin(GL_TRIANGLE_STRIP);
+    static GLBatch batch2;
+    batch2.begin(GL_TRIANGLE_STRIP);
     {
-        glTexCoord2fv(txcds[0]);
-        glColor3fv(color[0]);
-        glVertex3fv(verts[0]);
-        glTexCoord2fv(txcds[1]);
-        glColor3fv(color[3]);
-        glVertex3fv(verts[3]);
-        glTexCoord2fv(txcds[3]);
-        glColor3fv(color[4]);
-        glVertex3fv(verts[4]);
-        glTexCoord2fv(txcds[2]);
-        glColor3fv(color[7]);
-        glVertex3fv(verts[7]);
+        batch2.texCoord2fv(txcds[0]);
+        batch2.color3fv(color[0]);
+        batch2.vertex3fv(verts[0]);
+        batch2.texCoord2fv(txcds[1]);
+        batch2.color3fv(color[3]);
+        batch2.vertex3fv(verts[3]);
+        batch2.texCoord2fv(txcds[3]);
+        batch2.color3fv(color[4]);
+        batch2.vertex3fv(verts[4]);
+        batch2.texCoord2fv(txcds[2]);
+        batch2.color3fv(color[7]);
+        batch2.vertex3fv(verts[7]);
     }
-    glEnd();
+    batch2.end();
 
     tm.bind(skyboxTexID[1]); // front
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, skyboxWrapMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, skyboxWrapMode);
-    glBegin(GL_TRIANGLE_STRIP);
+    static GLBatch batch3;
+    batch3.begin(GL_TRIANGLE_STRIP);
     {
-        glTexCoord2fv(txcds[0]);
-        glColor3fv(color[1]);
-        glVertex3fv(verts[1]);
-        glTexCoord2fv(txcds[1]);
-        glColor3fv(color[0]);
-        glVertex3fv(verts[0]);
-        glTexCoord2fv(txcds[3]);
-        glColor3fv(color[5]);
-        glVertex3fv(verts[5]);
-        glTexCoord2fv(txcds[2]);
-        glColor3fv(color[4]);
-        glVertex3fv(verts[4]);
+        batch3.texCoord2fv(txcds[0]);
+        batch3.color3fv(color[1]);
+        batch3.vertex3fv(verts[1]);
+        batch3.texCoord2fv(txcds[1]);
+        batch3.color3fv(color[0]);
+        batch3.vertex3fv(verts[0]);
+        batch3.texCoord2fv(txcds[3]);
+        batch3.color3fv(color[5]);
+        batch3.vertex3fv(verts[5]);
+        batch3.texCoord2fv(txcds[2]);
+        batch3.color3fv(color[4]);
+        batch3.vertex3fv(verts[4]);
     }
-    glEnd();
+    batch3.end();
 
     tm.bind(skyboxTexID[2]); // right
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, skyboxWrapMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, skyboxWrapMode);
-    glBegin(GL_TRIANGLE_STRIP);
+    static GLBatch batch4;
+    batch4.begin(GL_TRIANGLE_STRIP);
     {
-        glTexCoord2fv(txcds[0]);
-        glColor3fv(color[2]);
-        glVertex3fv(verts[2]);
-        glTexCoord2fv(txcds[1]);
-        glColor3fv(color[1]);
-        glVertex3fv(verts[1]);
-        glTexCoord2fv(txcds[3]);
-        glColor3fv(color[6]);
-        glVertex3fv(verts[6]);
-        glTexCoord2fv(txcds[2]);
-        glColor3fv(color[5]);
-        glVertex3fv(verts[5]);
+        batch4.texCoord2fv(txcds[0]);
+        batch4.color3fv(color[2]);
+        batch4.vertex3fv(verts[2]);
+        batch4.texCoord2fv(txcds[1]);
+        batch4.color3fv(color[1]);
+        batch4.vertex3fv(verts[1]);
+        batch4.texCoord2fv(txcds[3]);
+        batch4.color3fv(color[6]);
+        batch4.vertex3fv(verts[6]);
+        batch4.texCoord2fv(txcds[2]);
+        batch4.color3fv(color[5]);
+        batch4.vertex3fv(verts[5]);
     }
-    glEnd();
+    batch4.end();
 
     tm.bind(skyboxTexID[3]); // back
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, skyboxWrapMode);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, skyboxWrapMode);
-    glBegin(GL_TRIANGLE_STRIP);
+    static GLBatch batch5;
+    batch5.begin(GL_TRIANGLE_STRIP);
     {
-        glTexCoord2fv(txcds[0]);
-        glColor3fv(color[3]);
-        glVertex3fv(verts[3]);
-        glTexCoord2fv(txcds[1]);
-        glColor3fv(color[2]);
-        glVertex3fv(verts[2]);
-        glTexCoord2fv(txcds[3]);
-        glColor3fv(color[7]);
-        glVertex3fv(verts[7]);
-        glTexCoord2fv(txcds[2]);
-        glColor3fv(color[6]);
-        glVertex3fv(verts[6]);
+        batch5.texCoord2fv(txcds[0]);
+        batch5.color3fv(color[3]);
+        batch5.vertex3fv(verts[3]);
+        batch5.texCoord2fv(txcds[1]);
+        batch5.color3fv(color[2]);
+        batch5.vertex3fv(verts[2]);
+        batch5.texCoord2fv(txcds[3]);
+        batch5.color3fv(color[7]);
+        batch5.vertex3fv(verts[7]);
+        batch5.texCoord2fv(txcds[2]);
+        batch5.color3fv(color[6]);
+        batch5.vertex3fv(verts[6]);
     }
-    glEnd();
+    batch5.end();
 
     glShadeModel(GL_FLAT);
     glEnable(GL_CULL_FACE);
@@ -992,65 +999,68 @@ void BackgroundRenderer::drawSky(SceneRenderer& renderer, bool mirror)
         if (!doSunset)
         {
             // just a pyramid
-            glBegin(GL_TRIANGLE_FAN);
-            glColor3fv(skyZenithColor);
-            glVertex3fv(skyPyramid[4]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[0]);
-            glColor3fv(skySunDirColor);
-            glVertex3fv(skyPyramid[3]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[2]);
-            glColor3fv(skyAntiSunDirColor);
-            glVertex3fv(skyPyramid[1]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[0]);
-            glEnd();
+            static GLBatch batch6;
+            batch6.begin(GL_TRIANGLE_FAN);
+            batch6.color3fv(skyZenithColor);
+            batch6.vertex3fv(skyPyramid[4]);
+            batch6.color3fv(skyCrossSunDirColor);
+            batch6.vertex3fv(skyPyramid[0]);
+            batch6.color3fv(skySunDirColor);
+            batch6.vertex3fv(skyPyramid[3]);
+            batch6.color3fv(skyCrossSunDirColor);
+            batch6.vertex3fv(skyPyramid[2]);
+            batch6.color3fv(skyAntiSunDirColor);
+            batch6.vertex3fv(skyPyramid[1]);
+            batch6.color3fv(skyCrossSunDirColor);
+            batch6.vertex3fv(skyPyramid[0]);
+            batch6.end();
         }
         else
         {
             // overall shape is a pyramid, but the solar sides are two
             // triangles each.  the top triangle is all zenith color,
             // the bottom goes from zenith to sun-dir color.
-            glBegin(GL_TRIANGLE_FAN);
-            glColor3fv(skyZenithColor);
-            glVertex3fv(skyPyramid[4]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[2]);
-            glColor3fv(skyAntiSunDirColor);
-            glVertex3fv(skyPyramid[1]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[0]);
-            glEnd();
+            static GLBatch batch7;
+            batch7.begin(GL_TRIANGLE_FAN);
+            batch7.color3fv(skyZenithColor);
+            batch7.vertex3fv(skyPyramid[4]);
+            batch7.color3fv(skyCrossSunDirColor);
+            batch7.vertex3fv(skyPyramid[2]);
+            batch7.color3fv(skyAntiSunDirColor);
+            batch7.vertex3fv(skyPyramid[1]);
+            batch7.color3fv(skyCrossSunDirColor);
+            batch7.vertex3fv(skyPyramid[0]);
+            batch7.end();
 
             GLfloat sunsetTopPoint[3];
             sunsetTopPoint[0] = skyPyramid[3][0] * (1.0f - sunsetTop);
             sunsetTopPoint[1] = skyPyramid[3][1] * (1.0f - sunsetTop);
             sunsetTopPoint[2] = skyPyramid[4][2] * sunsetTop;
-            glBegin(GL_TRIANGLES);
-            glColor3fv(skyZenithColor);
-            glVertex3fv(skyPyramid[4]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[0]);
-            glColor3fv(skyZenithColor);
-            glVertex3fv(sunsetTopPoint);
-            glVertex3fv(skyPyramid[4]);
-            glVertex3fv(sunsetTopPoint);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[2]);
-            glColor3fv(skyZenithColor);
-            glVertex3fv(sunsetTopPoint);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[0]);
-            glColor3fv(skySunDirColor);
-            glVertex3fv(skyPyramid[3]);
-            glColor3fv(skyCrossSunDirColor);
-            glVertex3fv(skyPyramid[2]);
-            glColor3fv(skyZenithColor);
-            glVertex3fv(sunsetTopPoint);
-            glColor3fv(skySunDirColor);
-            glVertex3fv(skyPyramid[3]);
-            glEnd();
+            static GLBatch batch8;
+            batch8.begin(GL_TRIANGLES);
+            batch8.color3fv(skyZenithColor);
+            batch8.vertex3fv(skyPyramid[4]);
+            batch8.color3fv(skyCrossSunDirColor);
+            batch8.vertex3fv(skyPyramid[0]);
+            batch8.color3fv(skyZenithColor);
+            batch8.vertex3fv(sunsetTopPoint);
+            batch8.vertex3fv(skyPyramid[4]);
+            batch8.vertex3fv(sunsetTopPoint);
+            batch8.color3fv(skyCrossSunDirColor);
+            batch8.vertex3fv(skyPyramid[2]);
+            batch8.color3fv(skyZenithColor);
+            batch8.vertex3fv(sunsetTopPoint);
+            batch8.color3fv(skyCrossSunDirColor);
+            batch8.vertex3fv(skyPyramid[0]);
+            batch8.color3fv(skySunDirColor);
+            batch8.vertex3fv(skyPyramid[3]);
+            batch8.color3fv(skyCrossSunDirColor);
+            batch8.vertex3fv(skyPyramid[2]);
+            batch8.color3fv(skyZenithColor);
+            batch8.vertex3fv(sunsetTopPoint);
+            batch8.color3fv(skySunDirColor);
+            batch8.vertex3fv(skyPyramid[3]);
+            batch8.end();
         }
     }
 
@@ -1173,15 +1183,16 @@ void BackgroundRenderer::drawGroundCentered()
     {
         for (int q = 0; q < 5; q++)
         {
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch9;
+            batch9.begin(GL_TRIANGLE_STRIP);
             for (int c = 0; c < 4; c++)
             {
                 const int index = indices[q][c];
-                glTexCoord2f(vertices[index][0] * repeat,
+                batch9.texCoord2f(vertices[index][0] * repeat,
                              vertices[index][1] * repeat);
-                glVertex2fv(vertices[index]);
+                batch9.vertex2fv(vertices[index]);
             }
-            glEnd();
+            batch9.end();
         }
     }
 
@@ -1204,24 +1215,26 @@ void BackgroundRenderer::drawGroundGrid(
     // x lines
     if (doShadows) glColor3f(0.0f, 0.75f, 0.5f);
     else glColor3f(0.0f, 0.4f, 0.3f);
-    glBegin(GL_LINES);
+    static GLBatch batch10;
+    batch10.begin(GL_LINES);
     for (i = -xhalf; i <= xhalf; i += gridSpacing)
     {
-        glVertex2f(x0 + i, y0 - yhalf);
-        glVertex2f(x0 + i, y0 + yhalf);
+        batch10.vertex2f(x0 + i, y0 - yhalf);
+        batch10.vertex2f(x0 + i, y0 + yhalf);
     }
-    glEnd();
+    batch10.end();
 
     /* z lines */
     if (doShadows) glColor3f(0.5f, 0.75f, 0.0f);
     else glColor3f(0.3f, 0.4f, 0.0f);
-    glBegin(GL_LINES);
+    static GLBatch batch11;
+    batch11.begin(GL_LINES);
     for (i = -yhalf; i <= yhalf; i += gridSpacing)
     {
-        glVertex2f(x0 - xhalf, y0 + i);
-        glVertex2f(x0 + xhalf, y0 + i);
+        batch11.vertex2f(x0 - xhalf, y0 + i);
+        batch11.vertex2f(x0 + xhalf, y0 + i);
     }
-    glEnd();
+    batch11.end();
 }
 
 void BackgroundRenderer::drawGroundShadows(
@@ -1379,24 +1392,25 @@ void BackgroundRenderer::drawGroundReceivers(SceneRenderer& renderer)
         color[3] = I;
 
         // draw ground receiver, computing lighting at each vertex ourselves
-        glBegin(GL_TRIANGLE_FAN);
+        static GLBatch batch12;
+        batch12.begin(GL_TRIANGLE_FAN);
         {
-            glColor4fv(color);
-            glVertex2f(0.0f, 0.0f);
+            batch12.color4fv(color);
+            batch12.vertex2f(0.0f, 0.0f);
 
             // inner ring
             d = hypotf(receiverRingSize, pos[2]);
             I = B / (atten[0] + d * (atten[1] + d * atten[2]));
             I *= pos[2] / d;
             color[3] = I;
-            glColor4fv(color);
+            batch12.color4fv(color);
             for (j = 0; j <= receiverSlices; j++)
             {
-                glVertex2f(receiverRingSize * angle[j][0],
+                batch12.vertex2f(receiverRingSize * angle[j][0],
                            receiverRingSize * angle[j][1]);
             }
         }
-        glEnd();
+        batch12.end();
         triangleCount += receiverSlices;
 
         for (i = 1; i < receiverRings; i++)
@@ -1420,19 +1434,20 @@ void BackgroundRenderer::drawGroundReceivers(SceneRenderer& renderer)
             }
             float outerAlpha = I;
 
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch13;
+            batch13.begin(GL_TRIANGLE_STRIP);
             {
                 for (j = 0; j <= receiverSlices; j++)
                 {
                     color[3] = innerAlpha;
-                    glColor4fv(color);
-                    glVertex2f(angle[j][0] * innerSize, angle[j][1] * innerSize);
+                    batch13.color4fv(color);
+                    batch13.vertex2f(angle[j][0] * innerSize, angle[j][1] * innerSize);
                     color[3] = outerAlpha;
-                    glColor4fv(color);
-                    glVertex2f(angle[j][0] * outerSize, angle[j][1] * outerSize);
+                    batch13.color4fv(color);
+                    batch13.vertex2f(angle[j][0] * outerSize, angle[j][1] * outerSize);
                 }
             }
-            glEnd();
+            batch13.end();
         }
         triangleCount += (receiverSlices * receiverRings * 2);
 
@@ -1554,14 +1569,15 @@ void BackgroundRenderer::drawAdvancedGroundReceivers(SceneRenderer& renderer)
         float outerColor[3];
 
         // draw ground receiver, computing lighting at each vertex ourselves
-        glBegin(GL_TRIANGLE_FAN);
+        static GLBatch batch14;
+        batch14.begin(GL_TRIANGLE_FAN);
         {
             // center point
             innerColor[0] = I * baseColor[0];
             innerColor[1] = I * baseColor[1];
             innerColor[2] = I * baseColor[2];
-            glColor3fv(innerColor);
-            glVertex2f(0.0f, 0.0f);
+            batch14.color3fv(innerColor);
+            batch14.vertex2f(0.0f, 0.0f);
 
             // inner ring
             d = hypotf(receiverRingSize, pos[2]);
@@ -1570,15 +1586,15 @@ void BackgroundRenderer::drawAdvancedGroundReceivers(SceneRenderer& renderer)
             outerColor[0] = I * baseColor[0];
             outerColor[1] = I * baseColor[1];
             outerColor[2] = I * baseColor[2];
-            glColor3fv(outerColor);
+            batch14.color3fv(outerColor);
             outerSize = receiverRingSize;
             for (j = 0; j <= receiverSlices; j++)
             {
-                glVertex2f(outerSize * angle[j][0],
+                batch14.vertex2f(outerSize * angle[j][0],
                            outerSize * angle[j][1]);
             }
         }
-        glEnd();
+        batch14.end();
         triangleCount += receiverSlices;
 
         bool moreRings = true;
@@ -1602,17 +1618,18 @@ void BackgroundRenderer::drawAdvancedGroundReceivers(SceneRenderer& renderer)
             outerColor[1] = I * baseColor[1];
             outerColor[2] = I * baseColor[2];
 
-            glBegin(GL_TRIANGLE_STRIP);
+            static GLBatch batch15;
+            batch15.begin(GL_TRIANGLE_STRIP);
             {
                 for (j = 0; j <= receiverSlices; j++)
                 {
-                    glColor3fv(innerColor);
-                    glVertex2f(angle[j][0] * innerSize, angle[j][1] * innerSize);
-                    glColor3fv(outerColor);
-                    glVertex2f(angle[j][0] * outerSize, angle[j][1] * outerSize);
+                    batch15.color3fv(innerColor);
+                    batch15.vertex2f(angle[j][0] * innerSize, angle[j][1] * innerSize);
+                    batch15.color3fv(outerColor);
+                    batch15.vertex2f(angle[j][0] * outerSize, angle[j][1] * outerSize);
                 }
             }
-            glEnd();
+            batch15.end();
         }
         triangleCount += (receiverSlices * 2 * (i - 2));
 

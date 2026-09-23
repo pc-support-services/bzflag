@@ -21,6 +21,7 @@
 #include "StateDatabase.h"
 #include "BZDBCache.h"
 #include "OpenGLMaterial.h"
+#include "GLBatch.h"
 #include "TextureManager.h"
 
 // local implementation headers
@@ -647,22 +648,23 @@ void            SphereBspSceneNode::SphereBspRenderNode::render()
         {
             for (i = 0; i < SphereRes; i++)
             {
-                glBegin(GL_TRIANGLE_STRIP);
+                static GLBatch batch0;
+                batch0.begin(GL_TRIANGLE_STRIP);
                 for (j = baseIndex; j < NumSlices; j++)
                 {
-                    glNormal3fv(geom[NumSlices * i + j]);
-                    glVertex3fv(geom[NumSlices * i + j]);
-                    glNormal3fv(geom[NumSlices * i + j + NumSlices]);
-                    glVertex3fv(geom[NumSlices * i + j + NumSlices]);
+                    batch0.normal3fv(geom[NumSlices * i + j]);
+                    batch0.vertex3fv(geom[NumSlices * i + j]);
+                    batch0.normal3fv(geom[NumSlices * i + j + NumSlices]);
+                    batch0.vertex3fv(geom[NumSlices * i + j + NumSlices]);
                 }
                 for (j = 0; j <= baseIndex; j++)
                 {
-                    glNormal3fv(geom[NumSlices * i + j]);
-                    glVertex3fv(geom[NumSlices * i + j]);
-                    glNormal3fv(geom[NumSlices * i + j + NumSlices]);
-                    glVertex3fv(geom[NumSlices * i + j + NumSlices]);
+                    batch0.normal3fv(geom[NumSlices * i + j]);
+                    batch0.vertex3fv(geom[NumSlices * i + j]);
+                    batch0.normal3fv(geom[NumSlices * i + j + NumSlices]);
+                    batch0.vertex3fv(geom[NumSlices * i + j + NumSlices]);
                 }
-                glEnd();
+                batch0.end();
             }
             addTriangleCount(SphereRes * NumSlices * 2);
         }
@@ -670,22 +672,23 @@ void            SphereBspSceneNode::SphereBspRenderNode::render()
         {
             for (i = 0; i < SphereLowRes; i++)
             {
-                glBegin(GL_TRIANGLE_STRIP);
+                static GLBatch batch1;
+                batch1.begin(GL_TRIANGLE_STRIP);
                 for (j = baseIndex; j < SphereLowRes; j++)
                 {
-                    glNormal3fv(lgeom[SphereLowRes * i + j]);
-                    glVertex3fv(lgeom[SphereLowRes * i + j]);
-                    glNormal3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
-                    glVertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
+                    batch1.normal3fv(lgeom[SphereLowRes * i + j]);
+                    batch1.vertex3fv(lgeom[SphereLowRes * i + j]);
+                    batch1.normal3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
+                    batch1.vertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
                 }
                 for (j = 0; j <= baseIndex; j++)
                 {
-                    glNormal3fv(lgeom[SphereLowRes * i + j]);
-                    glVertex3fv(lgeom[SphereLowRes * i + j]);
-                    glNormal3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
-                    glVertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
+                    batch1.normal3fv(lgeom[SphereLowRes * i + j]);
+                    batch1.vertex3fv(lgeom[SphereLowRes * i + j]);
+                    batch1.normal3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
+                    batch1.vertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
                 }
-                glEnd();
+                batch1.end();
             }
             addTriangleCount(SphereLowRes * SphereLowRes * 2);
         }
@@ -702,18 +705,19 @@ void            SphereBspSceneNode::SphereBspRenderNode::render()
         {
             for (i = 0; i < SphereRes; i++)
             {
-                glBegin(GL_TRIANGLE_STRIP);
+                static GLBatch batch2;
+                batch2.begin(GL_TRIANGLE_STRIP);
                 for (j = baseIndex; j < NumSlices; j++)
                 {
-                    glVertex3fv(geom[NumSlices * i + j]);
-                    glVertex3fv(geom[NumSlices * i + j + NumSlices]);
+                    batch2.vertex3fv(geom[NumSlices * i + j]);
+                    batch2.vertex3fv(geom[NumSlices * i + j + NumSlices]);
                 }
                 for (j = 0; j <= baseIndex; j++)
                 {
-                    glVertex3fv(geom[NumSlices * i + j]);
-                    glVertex3fv(geom[NumSlices * i + j + NumSlices]);
+                    batch2.vertex3fv(geom[NumSlices * i + j]);
+                    batch2.vertex3fv(geom[NumSlices * i + j + NumSlices]);
                 }
-                glEnd();
+                batch2.end();
             }
             addTriangleCount(SphereRes * NumSlices * 2);
         }
@@ -721,18 +725,19 @@ void            SphereBspSceneNode::SphereBspRenderNode::render()
         {
             for (i = 0; i < SphereLowRes; i++)
             {
-                glBegin(GL_TRIANGLE_STRIP);
+                static GLBatch batch3;
+                batch3.begin(GL_TRIANGLE_STRIP);
                 for (j = baseIndex; j < SphereLowRes; j++)
                 {
-                    glVertex3fv(lgeom[SphereLowRes * i + j]);
-                    glVertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
+                    batch3.vertex3fv(lgeom[SphereLowRes * i + j]);
+                    batch3.vertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
                 }
                 for (j = 0; j <= baseIndex; j++)
                 {
-                    glVertex3fv(lgeom[SphereLowRes * i + j]);
-                    glVertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
+                    batch3.vertex3fv(lgeom[SphereLowRes * i + j]);
+                    batch3.vertex3fv(lgeom[SphereLowRes * i + j + SphereLowRes]);
                 }
-                glEnd();
+                batch3.end();
             }
             addTriangleCount(SphereLowRes * SphereLowRes * 2);
         }
@@ -837,30 +842,31 @@ void            SphereFragmentSceneNode::FragmentRenderNode::render()
         myColor4fv(sceneNode->color);
         if (!BZDBCache::blend && sceneNode->transparent)
             myStipple(sceneNode->color[3]);
-        glBegin(GL_TRIANGLE_STRIP);
+        static GLBatch batch4;
+        batch4.begin(GL_TRIANGLE_STRIP);
         {
             if (BZDBCache::lighting)
             {
-                glNormal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta]);
-                glNormal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta]);
-                glNormal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta2]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta2]);
-                glNormal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta2]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta2]);
+                batch4.normal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta]);
+                batch4.normal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta]);
+                batch4.normal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta2]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta2]);
+                batch4.normal3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta2]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta2]);
                 addTriangleCount(2);
             }
             else
             {
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta2]);
-                glVertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta2]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi + theta2]);
+                batch4.vertex3fv(SphereBspSceneNode::SphereBspRenderNode::lgeom[SphereLowRes * phi2 + theta2]);
                 addTriangleCount(2);
             }
         }
-        glEnd(); // 4 verts -> 2 tris
+        batch4.end();
     }
     glPopMatrix();
 
