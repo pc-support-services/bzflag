@@ -797,8 +797,6 @@ bool WeatherRenderer::updateDrop(std::vector<rain>::iterator& drop,
                     {
                         if ( drop->roofTop < rainEndZ )
                             drop->roofTop = rainEndZ;
-                        else if ( drop->roofTop > rainEndZ )
-                            drop->roofTop = rainEndZ;
                     }
                 }
                 else
@@ -831,8 +829,6 @@ bool WeatherRenderer::updateDrop(std::vector<rain>::iterator& drop,
                     if ( rainSpeed > 0)
                     {
                         if ( newDrop.roofTop < rainEndZ )
-                            newDrop.roofTop = rainEndZ;
-                        else if ( newDrop.roofTop > rainEndZ )
                             newDrop.roofTop = rainEndZ;
                     }
                 }

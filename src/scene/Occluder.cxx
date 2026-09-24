@@ -421,9 +421,9 @@ void Occluder::draw() const
         // draw the plane normal
         static GLBatch batch0;
         batch0.begin(GL_LINES);
-        glColor4fv (colors[0]);
-        glVertex3fv (center);
-        glVertex3fv (outwards);
+        batch0.color4fv (colors[0]);
+        batch0.vertex3fv (center);
+        batch0.vertex3fv (outwards);
         batch0.end();
     }
 
@@ -442,16 +442,16 @@ void Occluder::draw() const
             }
             static GLBatch batch1;
             batch1.begin(GL_LINES);
-            glColor4fv (colors[(v % 4) + 1]);
+            batch1.color4fv (colors[(v % 4) + 1]);
             if (DrawEdges)
             {
-                glVertex3fv (vertices[v]);
-                glVertex3fv (vertices[vn]);
+                batch1.vertex3fv (vertices[v]);
+                batch1.vertex3fv (vertices[vn]);
             }
             if (DrawNormals)
             {
-                glVertex3fv (midpoint);
-                glVertex3fv (outwards);
+                batch1.vertex3fv (midpoint);
+                batch1.vertex3fv (outwards);
             }
             batch1.end();
         }
@@ -464,8 +464,8 @@ void Occluder::draw() const
         {
             static GLBatch batch2;
             batch2.begin(GL_POINTS);
-            glColor4fv (colors[(v % 4) + 1]);
-            glVertex3fv (vertices[v]);
+            batch2.color4fv (colors[(v % 4) + 1]);
+            batch2.vertex3fv (vertices[v]);
             batch2.end();
         }
     }

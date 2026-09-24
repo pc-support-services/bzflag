@@ -822,10 +822,10 @@ void TankIDLSceneNode::IDLRenderNode::render()
         // draw it
         static GLBatch batch0;
         batch0.begin(GL_TRIANGLE_STRIP);
-        myColor4fv(innerColor);
+        batch0.color4fv(innerColor);
         batch0.vertex3fv(cross[0]);
         batch0.vertex3fv(cross[1]);
-        myColor4fv(outerColor);
+        batch0.color4fv(outerColor);
         batch0.vertex3fv(project[0]);
         batch0.vertex3fv(project[1]);
         batch0.end();
@@ -1451,15 +1451,15 @@ void TankSceneNode::TankRenderNode::renderLights()
     {
         const float* scale = TankGeometryMgr::getScaleFactor(sceneNode->tankSize);
 
-        myColor3fv(lights[0]);
+        batch1.color3fv(lights[0]);
         batch1.vertex3f(lights[0][3] * scale[0],
                    lights[0][4] * scale[1],
                    lights[0][5] * scale[2]);
-        myColor3fv(lights[1]);
+        batch1.color3fv(lights[1]);
         batch1.vertex3f(lights[1][3] * scale[0],
                    lights[1][4] * scale[1],
                    lights[1][5] * scale[2]);
-        myColor3fv(lights[2]);
+        batch1.color3fv(lights[2]);
         batch1.vertex3f(lights[2][3] * scale[0],
                    lights[2][4] * scale[1],
                    lights[2][5] * scale[2]);

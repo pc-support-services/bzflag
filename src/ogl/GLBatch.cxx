@@ -52,7 +52,7 @@ void GLBatch::begin(GLenum _mode)
     // inherit the current GL color (sites set glColor* before drawing).
     glGetFloatv(GL_CURRENT_COLOR, curColor);
     memcpy(savedColor, curColor, sizeof(savedColor));
-    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, savedTex);
+    glGetFloatv(GL_CURRENT_TEXTURE_COORDS, savedTex); // writes 4 floats (s,t,r,q)
     memcpy(curTex, savedTex, sizeof(curTex));
     glGetFloatv(GL_CURRENT_NORMAL, savedNorm);
     memcpy(curNorm, savedNorm, sizeof(curNorm));
@@ -61,6 +61,8 @@ void GLBatch::begin(GLenum _mode)
     // draw through their own VBO pointers and depend on the enable bits
     // they inherited, not ones a GLBatch flush left behind)
     GLboolean b;
+    glGetBooleanv(GL_VERTEX_ARRAY, &b);
+    savedVertexArray = (b != GL_FALSE);
     glGetBooleanv(GL_COLOR_ARRAY, &b);
     savedColorArray = (b != GL_FALSE);
     glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &b);
@@ -76,11 +78,6 @@ void GLBatch::begin(GLenum _mode)
 
 void GLBatch::stampVertex()
 {
-    // current-value semantics: the active color/texcoord/normal at the
-    // time of the glVertex call is the one bound to this vertex
-    const int index = (int)verts.size() / (vsize == 2 ? 2 : 3);
-    (void)index;
-
     if (vsize == 2)
     {
         verts.push_back(curVert[0]);
@@ -207,10 +204,16 @@ void GLBatch::end()
     if (!open || verts.empty())
     {
         open = false;
+        // drop any staged attributes with no vertices (staged texcoords
+        // would otherwise linger until the next begin())
+        cols.clear();
+        texs.clear();
+        norms.clear();
         return;
     }
 
-    if (getenv("GLBATCH_DEBUG") != NULL && verts.size() >= 12)
+    static const bool dbgEnabled = (getenv("GLBATCH_DEBUG") != NULL);
+    if (dbgEnabled && verts.size() >= 12)
     {
         static int dbgCount = 0;
         if (dbgCount++ < 400)
@@ -240,9 +243,11 @@ void GLBatch::end()
     const int stride = 3; // verts always stored as 3 floats
 
     glVertexPointer(stride, GL_FLOAT, 0, vptr);
+    glEnableClientState(GL_VERTEX_ARRAY);
     if (cptr != NULL)
     {
         glColorPointer(csize, GL_FLOAT, 0, cptr);
+        glEnableClientState(GL_COLOR_ARRAY);
     }
     else
     {
@@ -275,7 +280,9 @@ void GLBatch::end()
         // draw as a closed loop: strip + one closing segment
         glDrawArrays(GL_LINE_STRIP, 0, count);
         {
-            // one extra segment closing the loop
+            // one extra segment closing the loop; set its own attribute
+            // pointers so the closer does not sample the strip's arrays
+            // (which would color it with v0/v1's attributes)
             GLfloat seg[6];
             seg[0] = verts[(count - 1) * 3];
             seg[1] = verts[(count - 1) * 3 + 1];
@@ -283,8 +290,15 @@ void GLBatch::end()
             seg[3] = verts[0];
             seg[4] = verts[1];
             seg[5] = verts[2];
+            glDisableClientState(GL_COLOR_ARRAY);
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+            glDisableClientState(GL_NORMAL_ARRAY);
             glVertexPointer(3, GL_FLOAT, 0, seg);
             glDrawArrays(GL_LINES, 0, 2);
+            // repoint the vertex array at the batch buffer: the restore
+            // block below may re-enable GL_VERTEX_ARRAY (begin() snapshot),
+            // and it must not keep referencing the stack-local seg buffer
+            glVertexPointer(3, GL_FLOAT, 0, vptr);
         }
         break;
 
@@ -297,6 +311,10 @@ void GLBatch::end()
     // flush never leaks array state into the next draw path (the tank VBO
     // path inherits enable bits instead of setting its own). Cheap: three
     // enable/disable calls, no attrib-stack round trip.
+    if (savedVertexArray)
+        glEnableClientState(GL_VERTEX_ARRAY);
+    else
+        glDisableClientState(GL_VERTEX_ARRAY);
     if (savedColorArray)
         glEnableClientState(GL_COLOR_ARRAY);
     else

@@ -135,6 +135,7 @@ Thumbs.db
 *.deb
 .backup-pre-opt/
 history.md
+HISTORY.md
 package/bzflag-deb/
 package/bzflag-2.4.31-1_arm64.deb
 

@@ -171,7 +171,7 @@ void TankGeometryMgr::deleteLists()
                     PartBatch& batch = partBatches[shadow][lod][size][part];
                     if (batch.vbo != 0)
                     {
-                        bzDeleteTextures(1, &batch.vbo);
+                        bzDeleteBuffers(1, &batch.vbo);
                         batch.vbo = 0;
                     }
                     batch.data.clear();
@@ -239,7 +239,7 @@ void TankGeometryMgr::buildLists()
                     // free any previous VBO, reset the batch
                     if (batch.vbo != 0)
                     {
-                        bzDeleteTextures(1, &batch.vbo);
+                        bzDeleteBuffers(1, &batch.vbo);
                         batch.vbo = 0;
                     }
                     batch.data.clear();
@@ -287,7 +287,7 @@ void TankGeometryMgr::buildLists()
                     // upload the interleaved vertex data to a VBO
                     if (!batch.data.empty())
                     {
-                        bzGenTextures(1, &batch.vbo);
+                        bzGenBuffers(1, &batch.vbo);
                         glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
                         glBufferData(GL_ARRAY_BUFFER,
                                      batch.data.size() * sizeof(GLfloat),
@@ -444,6 +444,9 @@ static GLenum  runMode = 0;
 static int     runFirst = -1;
 static int     runCount = 0;
 static GLenum  runShade = GL_FLAT;
+// true while the current run captures a re-tessellated triangle fan
+// (doVertex3f branches on it; the run itself is tagged GL_TRIANGLES)
+static bool    fanRun = false;
 // the current normal/texcoord, folded into each vertex as it is appended
 static GLfloat lastNormal[3]   = {0.0f, 0.0f, 1.0f};
 static GLfloat lastTexCoord[2] = {0.0f, 0.0f};
@@ -457,6 +460,7 @@ void TankGeometryUtils::beginCapture(PartBatch* batch)
     captureBatch = batch;
     capturing = true;
     runMode = 0;
+    fanRun = false;
     runFirst = -1;
     runCount = 0;
     haveLastVertex = false;
@@ -476,6 +480,7 @@ void TankGeometryUtils::endCapture()
         captureBatch->runShade.push_back(runShade);
     }
     runMode = 0;
+    fanRun = false;
     runFirst = -1;
     runCount = 0;
     haveLastVertex = false;
@@ -500,7 +505,8 @@ void TankGeometryUtils::startRun(GLenum mode, GLenum shade)
         captureBatch->runShade.push_back(runShade);
         runCount = 0;
     }
-    runMode = mode;
+    runMode = (mode == GL_TRIANGLE_FAN) ? GL_TRIANGLES : mode;
+    fanRun = (mode == GL_TRIANGLE_FAN);
     runShade = shade;
     runFirst = (int)(captureBatch->data.size() / 8);
     runCount = 0;
@@ -510,7 +516,8 @@ void TankGeometryUtils::startRun(GLenum mode, GLenum shade)
 
 // triangle-fan emulation: emit (v0, v[i-1], v[i]) as GL_TRIANGLES.
 // strips are emitted natively; fans are re-tessellated because
-// glDrawArrays has no fan mode.
+// glDrawArrays has no fan mode. The run is tagged GL_TRIANGLES in
+// startRun(), so this predicate must track the requested fan mode.
 static void emitFanVertex(const GLfloat* vtx)
 {
     if (captureBatch == NULL)
@@ -522,8 +529,12 @@ static void emitFanVertex(const GLfloat* vtx)
         runCount++;
         return;
     }
-    // re-emit vertex 0 and the previous vertex, then this one
-    const GLfloat* v0 = &captureBatch->data[runFirst * 8];
+    // re-emit vertex 0 and the previous vertex, then this one;
+    // copy v0 into a local first - inserting from a range into the same
+    // vector is UB if the insert reallocates
+    const GLfloat* data = &captureBatch->data[runFirst * 8];
+    const GLfloat v0[8] = {data[0], data[1], data[2], data[3],
+                           data[4], data[5], data[6], data[7]};
     captureBatch->data.insert(captureBatch->data.end(), v0, v0 + 8);
     captureBatch->data.insert(captureBatch->data.end(), lastVertex, lastVertex + 8);
     captureBatch->data.insert(captureBatch->data.end(), vtx, vtx + 8);
@@ -548,7 +559,7 @@ void TankGeometryUtils::doVertex3f(GLfloat x, GLfloat y, GLfloat z)
         vtx[5] = lastNormal[2];
         vtx[6] = lastTexCoord[0];
         vtx[7] = lastTexCoord[1];
-        if (runMode == GL_TRIANGLE_FAN)
+        if (fanRun)
             emitFanVertex(vtx);
         else
         {

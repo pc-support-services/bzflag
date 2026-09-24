@@ -383,13 +383,13 @@ void            BillboardSceneNode::BillboardRenderNode::render()
         static GLBatch batch0;
         batch0.begin(GL_TRIANGLE_STRIP);
         batch0.texCoord2f(   u,    v);
-        glVertex2f  (-sceneNode->width, -sceneNode->height);
+        batch0.vertex2f(-sceneNode->width, -sceneNode->height);
         batch0.texCoord2f(du+u,    v);
-        glVertex2f  ( sceneNode->width, -sceneNode->height);
+        batch0.vertex2f( sceneNode->width, -sceneNode->height);
         batch0.texCoord2f(   u, dv+v);
-        glVertex2f  (-sceneNode->width,  sceneNode->height);
+        batch0.vertex2f(-sceneNode->width,  sceneNode->height);
         batch0.texCoord2f(du+u, dv+v);
-        glVertex2f  ( sceneNode->width,  sceneNode->height);
+        batch0.vertex2f( sceneNode->width,  sceneNode->height);
         batch0.end();
     }
     glPopMatrix();

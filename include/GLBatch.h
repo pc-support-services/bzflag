@@ -14,9 +14,10 @@
  *   Drop-in replacement for immediate-mode glBegin/glEnd drawing.
  *   Accumulates vertices (+ current color/texcoord/normal, with GL
  *   current-value semantics) and flushes with glDrawArrays on end().
- *   GL_TRIANGLE_FAN runs are expanded to triangles; GL_LINE_LOOP runs
- *   are drawn as a closed line strip. Client array state is saved and
- *   restored around each draw (glPushClientAttrib).
+ *   GL_TRIANGLE_FAN runs are drawn natively via glDrawArrays; GL_LINE_LOOP runs
+ *   are drawn as a closed line strip. Client-array enable bits are
+ *   snapshotted at begin() and restored at end() (no attrib-stack
+ *   round trip); array pointers are left as set by the flush.
  */
 #ifndef BZF_GL_BATCH_H
 #define BZF_GL_BATCH_H
@@ -64,11 +65,12 @@ private:
     bool useNorm;
     GLfloat curVert[3];
     GLfloat curColor[4];
-    GLfloat curTex[2];
+    GLfloat curTex[4];     // 4 floats: GL_CURRENT_TEXTURE_COORDS returns s,t,r,q
     GLfloat curNorm[3];
     GLfloat savedColor[4]; // current attributes at begin(), restored at end()
-    GLfloat savedTex[2];
+    GLfloat savedTex[4];
     GLfloat savedNorm[3];
+    bool savedVertexArray; // client-array enable bits at begin(), restored at end()
     bool savedColorArray;  // client-array enable bits at begin(), restored at end()
     bool savedTexCoordArray;
     bool savedNormalArray;

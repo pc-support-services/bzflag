@@ -504,6 +504,11 @@ void GuidedMissileStrategy::radarRender() const
             batch.vertex2f(orig[0] - dir[0], orig[1] - dir[1]);
             batch.end();
         }
+        else     //lagging (default, mirrors SegmentedShotStrategy)
+        {
+            batch.vertex2f(orig[0] - dir[0], orig[1] - dir[1]);
+            batch.end();
+        }
 
         // draw a "bright reddish" missle tip
         if (size > 0)
