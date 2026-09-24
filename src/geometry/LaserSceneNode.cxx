@@ -228,9 +228,15 @@ void LaserSceneNode::LaserRenderNode::renderFlatLaser()
         batch0.vertex3f(  0.0f,  0.0f,  0.0f);
         batch0.texCoord2f(0.0f,  0.0f);
         batch0.vertex3f(  0.0f,  0.0f,  1.0f);
+        // client arrays need a texcoord per vertex (legacy GL inherited
+        // the last one); repeat it for the remaining fan vertices
+        batch0.texCoord2f(0.0f,  0.0f);
         batch0.vertex3f(  0.0f,  1.0f,  0.0f);
+        batch0.texCoord2f(0.0f,  0.0f);
         batch0.vertex3f(  0.0f,  0.0f, -1.0f);
+        batch0.texCoord2f(0.0f,  0.0f);
         batch0.vertex3f(  0.0f, -1.0f,  0.0f);
+        batch0.texCoord2f(0.0f,  0.0f);
         batch0.vertex3f(  0.0f,  0.0f,  1.0f);
         batch0.end();
 

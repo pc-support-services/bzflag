@@ -106,7 +106,7 @@ void            EighthDimSceneNode::EighthDimRenderNode::render()
     batch0.begin(GL_TRIANGLES);
     for (int i = 0; i < numPolygons; i++)
     {
-        myColor4fv(color[i]);
+        batch0.color4fv(color[i]);
         batch0.vertex3fv(poly[i][0]);
         batch0.vertex3fv(poly[i][2]);
         batch0.vertex3fv(poly[i][1]);

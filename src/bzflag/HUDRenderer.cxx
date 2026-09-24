@@ -1551,7 +1551,6 @@ void            HUDRenderer::renderBox(SceneRenderer&)
                 // on the visible part of tape
                 GLfloat mx = maxMotionSize / headingOffset *
                              ((relAngle < 180.0f) ? relAngle : relAngle - 360.0f);
-                static GLBatch batch;
                 batch.begin(GL_TRIANGLE_STRIP);
                 batch.vertex2f(mx, 0.0f);
                 batch.vertex2f(mx + 4.0f, 4.0f);

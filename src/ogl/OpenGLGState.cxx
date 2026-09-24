@@ -1622,6 +1622,31 @@ void bzDeleteTextures(GLsizei count, const GLuint *textures)
     return;
 }
 
+#undef glGenBuffers
+#undef glDeleteBuffers
+// glew exposes glGenBuffers/glDeleteBuffers only as function-pointer
+// macros (unlike the plain GL 1.1 texture calls), so after the #undef
+// above there is no declaration left - call the glew entry points
+// directly inside the wrappers.
+void bzGenBuffers(GLsizei count, GLuint *buffers)
+{
+    if (OpenGLGState::getExecutingFreeFuncs())
+        contextFreeError ("bzGenBuffers() is having issues");
+    __glewGenBuffers(count, buffers);
+    return;
+}
+
+void bzDeleteBuffers(GLsizei count, const GLuint *buffers)
+{
+    if (OpenGLGState::getExecutingInitFuncs())
+        contextInitError ("bzDeleteBuffers() is having issues");
+    if (OpenGLGState::haveGLContext())
+        __glewDeleteBuffers(count, buffers);
+    else
+        logDebugMessage(4,"bzDeleteBuffers(), no context\n");
+    return;
+}
+
 
 //
 // Test for matrix underflows (overflows are not yet tested)

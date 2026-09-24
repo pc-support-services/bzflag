@@ -1,413 +1,121 @@
-			    BZFlag 2.4.31
-			 https://BZFlag.org/
-		Copyright (c) 1993-2025 Tim Riker
-
-BZFlag is an Open Source OpenGL multiplayer multiplatform Battle Zone
-capture the Flag game.  At its heart, the game is a 3D first person
-tank simulation where opposing teams battle for dominance.  The game
-was originally written for SGI computers running Irix, but now runs
-and is actively maintained on Windows, Linux, Mac OS X, and other
-platforms.
-
-BZFlag may be redistributed under either the LGPL or MPL licenses.
-
-This is the BZFlag README file.  This file includes introductory build
-instructions, user community interaction references, information for
-getting involved in BZFlag development, a manifest of the source code
-layout, basic usage expectations, contact information, and more.
-
-
-Table of Contents
-=================
-    Introduction
-    Table of Contents
-    Obtaining BZFlag
-    Compiling and Installation
-	Short Version
-	Long Version
-    Communication
-	Internet Relay Chat
-	Forums
-    Bug Reports and Support
-    Providing Contributions
-    Source Tree Organization
-    Public Internet Servers and the "list server"
-    Notes on "CHEAT" servers and network abuse
-    Project History and Contributions
-    Contact
-
-
-Obtaining BZFlag
-================
-
-Main BZFlag Website:  http://BZFlag.org
-BZFlag Github Site:  https://github.com/BZFlag-Dev/bzflag
-
-The main BZFlag website provides access to most all of the resources
-available for the game.  The binary and source distributions of BZFlag
-are, however, provided on the GitHub project site.  Compiled versions
-are distributed as installable packages, disk images, and more, with
-details varying depending on the platform.  Source code distributions
-are provided and archived in various formats as well. See the project
-site for the download links.
-
-BZFlag is also available directly from GitHub.  To obtain BZFlag from
-git, a bit more familiarity with software development is expected.
-If you're familiar enough, anonymous GIT access is provided from the
-repository:
-
-  https://github.com/BZFlag-Dev/bzflag.git
-
-
-Compiling and Installation
-==========================
-
-To compile a playable BZFlag, the following steps should get you up
-and running quickly if everything external to BZFlag is properly
-installed:
-
-  ./autogen.sh
-  ./configure
-  make
-  ./src/bzflag/bzflag
-
-If configure detected everything it needed to build the BZFlag client,
-after make the client will be sitting in src/bzflag as 'bzflag'.  The
-game can be run from there, though you will probably want to "sudo
-make install" or otherwise become a privileged user and install the
-game properly for your system.
-
-If you're building on a platform that has a README.* file, you should
-consult that file as they usually contain additional instructions or
-details specific for building on that platform.  There are often hints
-for common problems specific to those platforms as well.
-
-The Longer Version:
-
-To build sources directly from a git clone you need to create a
-configure script. You can skip this step if you grab a distribution of
-BZFlag that already has a ./configure script in it, such as from a
-source distribution tarball.  To generate the configure script, you
-need to run the provided autogen.sh script:
-
-  ./autogen.sh
-
-The script will report whether sufficient versions of the GNU Build
-System tools (i.e. autoconf, automake, and libtool) that were detected
-and if successful, a configure script will be generated.  If the
-script fails, submit a report to the developers containing the output
-of "sh autogen.sh -v". This will run autogen.sh in verbose mode.  One
-of the most common failures is having insufficient versions or
-mismatched combinations of the GNU Build System tools, so make sure
-your tools are recent.
+# BZFlag ARM64 Renderer Modernization
+
+This repository carries the Pesky_UK modernization of BZFlag 2.4
+for ARM64 Linux (Adreno X1-85, Mesa 26, OpenGL 4.6 compatibility profile).
+Upstream BZFlag 2.4 rendered everything through immediate-mode OpenGL
+(glBegin/glEnd) and display lists. This fork replaces that draw path with
+batched vertex-array rendering, per-pixel GLSL lighting, and shadow mapping —
+with no new external libraries — while keeping the compatibility profile so
+the rest of the engine remains untouched.
+
+Results (measured in-game on the target machine, ARM64 laptop):
+
+    Before:  15-20 fps, ~15 ms frame lag, 240 glBegin sites, 46 display lists
+    After:   120+ fps, 1-2 ms frame lag, 15 glBegin sites (all inside
+             display lists, by design), zero display-list tank geometry
+
+A full development log (every change, bug, and measurement) is kept in
+`HISTORY.md` at the repository root. The summary below follows that log.
+
+## Platform work
+
+- Migrated the platform layer from SDL 1.2 to SDL 2 (2.32): SDL2Display,
+  SDL2Visual, CMake/autotools find_package(SDL2).
+- Native ARM64 build (CMakeLists.txt added; CI builds the .deb on
+  ubuntu-24.04-arm via GitHub Actions).
+- Packaged as `bzflag` .deb (arm64), installed under /usr/local with desktop
+  entry and hicolor icons.
+
+## Tier 1 - visual quality (no new libs)
+
+- MSAA (multisample BZDB default 4) via SDL visual attributes; MSAA FBO
+  renderbuffer fixed to GL_RGBA.
+- Anisotropic texture filtering (default 8, clamped to GL_MAX_TEXTURE_MAX_
+  ANISOTROPY), including fonts; maxTextureSize 4096.
+- Specular lighting tuned (GL_SPECULAR 0.5*color, tank material
+  specular/shininess raised), softer night/day ambient, EXP2 fog with
+  sky-tinted color.
+- Textures regenerated: 512x512 seamless fbm roof, 512x512 moon.
+
+## Tier 2 - tank rendering
+
+- Stage A: tank geometry off ~450 display lists onto VBOs. A capture layer
+  in TankGeometryMgr records builder output into interleaved
+  position/normal/uv batches (8 floats per vertex, GL_STATIC_DRAW); triangle
+  fans are re-tessellated to triangle soup; per-run shade model recorded and
+  restored at draw time.
+- Stage B: TankLightingShader - GLSL 1.20 per-pixel Blinn-Phong for tanks,
+  reading built-in gl_LightSource/gl_FrontMaterial/gl_Fog so fixed-function
+  state needs no mirroring; falls back to fixed pipeline if compile fails.
+- Stage C: sun shadow mapping - depth-only FBO (ShadowMapFBO) + per-frame
+  sun-space depth pass (ShadowMapper), 4-tap PCF with normal-offset bias in
+  the tank shader; BZDB shadowMapSize (default 2048). Falls back to the
+  legacy stippled ground shadows when unavailable.
+
+## Tier 3 - de-immediate-mode (GLBatch)
+
+- New GLBatch utility (src/ogl/GLBatch.cxx, include/GLBatch.h): drop-in
+  glBegin/glEnd replacement. Accumulates vertices with GL current-value
+  semantics and flushes via glDrawArrays; GL_TRIANGLE_FAN drawn natively,
+  GL_LINE_LOOP expanded to strip + closing segment; client-array enable bits
+  snapshot/restored per flush; current color/normal/texcoord restored to
+  match glEnd semantics.
+- 97 immediate-mode blocks across 23 files converted in user-verified
+  stages (HUD cluster, world/FX cluster, leftovers: radar, walls, mesh,
+  flags, tanks, shots, weather lines, debug views). The 15 remaining
+  glBegin blocks live inside glNewList/glEndList display lists (fonts, sky,
+  celestial bodies, rain) and cannot be captured by glDrawArrays - they are
+  intentional.
+- Client-array state handling was rebuilt around an explicit
+  enable-bit snapshot (glPushClientAttrib removed for performance after
+  profiling showed it pure overhead at dozens of flushes per frame).
+
+## Performance work
+
+- GLBatch flush path: native fan draws (no per-frame heap re-tessellation),
+  attrib restores trimmed, env lookups cached.
+- SceneRenderer setGamma(): full celestial recompute per slider tick
+  replaced with cached-base rescaling.
+- Server list ping retry budget fixed (retryCount now resets per refresh).
+- Measured with the built-in FPS HUD (key T) against the same map/time:
+  657 (pre-Tier-3) vs 667-671 (post), and ~30 -> 120+ fps against the
+  original pre-Tier-2 build.
+
+## Notable bugs found and fixed (highlights; full list in HISTORY.md)
+
+- Stale static library after src/ogl edits (libtool convenience-archive
+  flattening) silently shipping old GLBatch code - rebuild chain:
+  ogl -> rm geometry .la/.a -> geometry -> relink, then strings-verify.
+- Client-array enable bits left dirty by GLBatch flushes -> untextured
+  tanks / white radar blocks; fixed with the begin()/end() snapshot.
+- SceneNode.h macro #undef leaking across translation units -> all batched
+  colors lost (the "white radar block"); fixed with pragma push/pop_macro.
+- Flat-shaded sky from an unrestored glShadeModel in the VBO tank path.
+- A central macro-redirect approach for de-immediate-mode was attempted,
+  live-tested, and rolled back in favor of hand-edited conversions after
+  color-state regressions.
+- 2026-09-24 quorum review (3 independent reviewers) + recheck: per-vertex
+  color array enable, texcoord-per-vertex staging, buffer-id wrappers
+  (bzGenBuffers/bzDeleteBuffers), fan-run draw-mode tagging, and several
+  raw-GL-inside-batch sites corrected; tree re-verified clean.
+
+## Verification
 
-If the previous step was successful you now have a script for
-configuring BZFlag.  This command:
+Every stage was built (make + make check), packaged (deb with icons and
+desktop entry verified via dpkg -L), installed, and live-tested in-game with
+a scripted harness (local bzfs on port 5154, solo bot, ydotool input, FPS
+HUD) before sign-off. The user visually verified each tier and stage.
 
-  ./configure --help
+## Repository
 
-will list the variety of configuration options.  The script adapts
-well to various system configurations, so it may be enough to simply
-run it as:
+- Upstream: https://github.com/BZFlag-Dev/bzflag (branch 2.4)
+- This fork: https://github.com/PC-Support-Services/bzflag (branch 2.4)
+- License: unchanged from upstream (LGPL or MPL, see COPYING).
 
-  ./configure
+## Building (short version)
 
-You may want to create a 'work' directory and configure from there to
-have all the build products and binary executables get placed in a
-directory separate from the sources.  To do this, simply create a
-directory then run configure and make from there instead.
+    ./autogen.sh && ./configure && make -j4 && make check
 
-After configure completes, it will report whether all the requisite
-packages were found that it needs in order to build the client and the
-server.  The client is reliant upon the following external
-dependencies that should be installed before running configure:
-
-  OpenGL 1.0+
-  libSDL 1.2+
-
-If you're on an operating system that uses a packaging system
-(e.g. apt, portage, ports, etc), be sure to install the development
-kit versions of each of those (e.g. xlibmesa-gl-dev package) so that
-headers are made available.  You may also want to manually install
-other dependencies that BZFlag automatically provides if you do not
-have them pre-installed:
-
-  c-ares
-  libCURL
-  libregex (usually provided as part of libc)
-  zlib
-
-The README.Linux file includes a detailed list of of the packages
-needed to compile and run BZFlag on some popular Linux distributions.
-
-The final summary at the end of running configure will report whether
-the client will be built or not.  Once configure has been run, you may
-compile by simply running 'make'.  If you have GNU Make and are on a
-multiprocessor system, you can build in parallel with the -j option:
-
-  make -j4
-
-If compilation was successful, the client will be in src/bzflag and
-the server will be in src/bzfs as 'bzflag' and 'bzfs' respectively.
-You can run the client or the server directly from those locations
-with or without installing:
-
-  src/bzflag/bzflag
-
-BZFlag looks for data files in a path defined during compile, in
-./data/ , or in the previously specified data path only.  As part of
-the tarball/git clone, the base data library is located in
-<installed-locale>/bzflag/data.  This means that to test in a working
-directory you need to tell bzflag where to find these files if there
-is not a 'data' directory in your current directory.  This can be done
-with a symbolic link:
-
-  ln -s ./path/to/bzflag/data
-
-After testing you can install BZFlag by running 'make install' with
-sufficient system installation privileges.  Use 'sudo', 'su', or
-similar methods to elevate your privileges when installing BZFlag
-system-wide:
-
-  sudo make install
-
-You should now have BZFlag in the system directory ready to run.
-
-If you do not have admin privileges on your platform, you can install
-files in a directory that you own; for this to work, you have to
-append to the configure command the prefix option:
-
-  ./configure --prefix=YourHomeDirectoryHere
-
-You will then be able to perform a "make install" without needing to
-elevate your privileges, and all bzflag executable files will be
-installed in the subdir bin of the specified path.
-
-For additional information on installing, see INSTALL file.
-
-Again, some platforms may be different.  See the README file
-appropriate to your system for more information.
-
-You can also build an installable package using:
-
-  make package
-
-The package will be placed in ./dist; the exact form of the package
-depends on the platform.
-
-There are three cleanup targets: clean, distclean, and
-maintainer-clean.
-
-`make clean' removes intermediate files but leaves bzflag and other
-programs and any man pages.
-
-`make distclean' removes everything clean does and also programs and
-man pages. This should get things back to a tarball state.
-
-`make maintainer-clean' removes everything distclean does and also
-packages, directories created during the build, and the platform
-configuration; this should get the source tree back to its state in
-the Git repository.
-
-To build BZFlag for an unsupported platform, see PORTING.
-
-The ./configure script has a number of build options that you may find
-interesting.
-
-
-Communication
-=============
-
-The BZFlag project has several resources set up for communicating both
-with other developers and with the community.  There is an IRC
-channel and forums.
-
-Internet Relay Chat
--------------------
-Most of the BZFlag development activity and discussions occur over
-IRC.  Join the #bzflag IRC channel on the Libera.Chat network
-(irc.libera.chat, TLS port 6697) to get involved.
-
-See https://web.libera.chat/ for a web based interface for
-first-time users.  Individuals that intend to stay in the channel are
-expected to get a non-web-based IRC client.  See http://irchelp.org or
-search the web for IRC clients for your operating system.
-
-Forums
----------------
-There are extensive and active forums used by players, server
-operators, administrators, and others available here:
-
-https://forums.bzflag.org
-
-Registering an account on the forums presently also registers your callsign
-for use inside of BZFlag.  Some servers require registration in order to
-play.  See the Getting Started page on our site for more about registration.
-
-
-Bug Reports and Support
-=======================
-
-For reporting bugs and unexpected behavior, please go to BZFlag bug
-tracking system at:
-
-https://github.com/BZFlag-Dev/bzflag/issues
-
-If you require assistance with some issue, please visit the BZFlag
-IRC channel at #bzflag at irc.libera.chat
-
-Alternatively, discussion forums are also available for resolving issues.
-
-
-Providing Contributions
-=======================
-
-Pull Requests should be entered submitted via the GitHub pull system:
-
-https://github.com/BZFlag-Dev/bzflag/pulls
-
-Contributions are gladly accepted for modifications that do not
-affect the core gameplay.  Interacting with the other developers in
-the IRC channel is recommended for any changes which will affect
-gameplay.
-
-
-Source Tree Organization
-========================
-
-After unpacking a source distribution, you should have at least the
-following files in the new 'bzflag' directory:
-
-  README	- this file
-  README.*	- platform specific details
-  AUTHORS	- project contributors
-  COPYING	- the license for BZFlag
-  ChangeLog	- source code changes since previous release
-  DEVINFO       - information for developers
-  NEWS		- history of visible changes for each release
-  PORTING	- a guide for porting BZFlag
-  autogen.sh	- build system preparation script
-  configure.ac	- build system configuration script template
-  data/		- data files (sounds, images, etc.)
-  include/	- include headers for libraries
-  man/		- man pages
-  misc/		- miscellaneous goo
-  MSVC/		- stuff for building on the Windows platform
-  package/	- stuff to build installable packages
-  plugins/	- bzfs plugins
-  src/		- bzflag, bzfs, etc. source code
-    3D/		  - 3D code including texture manager
-    bzadmin/      - bzadmin app source code (text admin/chat client)
-    bzflag/	  - bzflag app source code (game client)
-    bzfs/	  - bzfs app source code (game server)
-    common/	  - general purpose classes
-    date/         - unified version and build date stamping for apps
-    game/	  - game library used by both the server and client(s)
-    geometry/	  - geometry rendering classes
-    mediafile/	  - classes for reading resources
-    net/	  - networking classes and functions
-    obstacle/	  - collision detection stuff
-    ogl/	  - OpenGL utility classes
-    platform/	  - platform dependent code
-    scene/	  - high level rendering algorithms
-  tools/	- various helper utilities
-  Xcode	        - Mac OS X Xcode project and associated files
-
-Note that include/ does not have all the include files.  If a header
-is used entirely within a library (i.e. it doesn't directly provide
-functionality outside the library) then the header is found in the
-library's directory under src/.  An include file goes in include/ only
-if it's required by another library or libraries or executables.
-While this complicates locating a header file (it can be in one of two
-places instead of just one place), you can instantly tell if a header
-file is (can be) used by clients of the library.
-
-
-Public Internet Servers and the "list server"
-=============================================
-
-The bzflag project offers a public server listing service that allows
-players to find servers to play on. This service is run for the
-benefit of the project. As of Version 2.4, BZFlag servers that wish to
-be listed on the public list server must provide an authentication key
-that ties the server to a specific global user. This is done to
-provide contact information for players and project
-staff. Authentication keys are automatically generated at
-https://my.bzflag.org/listkeys/
-
-
-Notes on "CHEAT" servers and network abuse
-==========================================
-
-While the license for BZFlag certainly allows users to run any server
-modification that they wish or to modify the code in any way, we ask
-that people do not publish or host "cheat" clients or servers to the
-general public for use.  We also expect that users will abide by basic
-usage guidelines of reasonable and tolerable behavior that are not
-detrimental to the game's heritage of a fun gaming environment for
-all.
-
-We understand the desire to expand, modify, and improve the game and
-its sources including the ability to test out new features publicly.
-These modified clients and servers generally provide some advantage
-over unmodified clients and are generally discouraged for widespread
-use.  As such, we ask that anyone wishing to host or otherwise
-participate in a game that involves a modified client or server to
-register under a different network protocol than the current public
-release by modifying BZ_PROTO_VERSION in the src/date/buildDate.cxx
-file.  This will let modified games be played and prevent modified
-clients from being used on public unmodified servers.
-
-Any individuals that are found to be contributing to abuse of the
-public services being provided may be subject to bans or other access
-restrictions.  Abuse generally consists of any disruption to one of
-BZFlag's network services including denial of service attacks,
-spamming of BZFlag web sites or servers, disruptive gameplay on
-multiple public servers, intrusion attempts, password sniffing, or any
-other behavior that is deemed inappropriate.
-
-The BZFlag project administrators reserve the right to remove public
-listings of any game servers for any reason whatsoever, including
-removal of servers or banning of individuals that do not follow this
-request.  Similarly, the BZFlag project administrators also reserve
-the right to limit access or otherwise block any players from public
-service access at any time.  These actions may include the suspension
-or removal of global accounts and limiting access to the web site
-services including web site services, list server access, forum access,
-and any league resources.
-
-In general, the entire network is provided by the community for the
-community as an entirely volunteer and contributed effort.  We ask
-that all players recognize and respect the time, effort, and resources
-involved and that we're all generally here to have a good time.
-
-
-Project History and Contributions
-=================================
-
-BZFlag was primarily originally authored by Chris Schoeneman
-<crs23@bigfoot.com> in the early 1990's.  After several years of
-development, Chris turned over copyright and maintainership of the
-game to Tim Riker.
-
-BZFlag continues today to be maintained and developed by the Open
-Source community by a project administration team with contributions coming
-in from all over the world.  See the AUTHORS file for more details on
-contributions to the project.
-
-
-Contact
-=======
-
-Any of the core developers listed in the AUTHORS file are generally
-receptive to being contacted for most matters relating to the game.
-Internet Relay Chat (IRC) or e-mail is generally the expected method
-of interaction with IRC being generally preferred.  The project
-maintainer Tim Riker <Tim@Rikers.org> is available for most legal matters,
-but day to day development is handled by the Project Administrators:
-
-Scott Wichser (blast007) <blast007@users.sourceforge.net>
-Jeff Makey (BulletCatcher) <bullet_catcher@users.sourceforge.net>
-
-Happy Shooting!
-The BZFlag Development Team
+or use CMake. The GitHub Actions workflow (.github/workflows/build-deb.yml)
+builds the arm64 .deb on every push to 2.4 and attaches it to releases on
+tag push (v*).

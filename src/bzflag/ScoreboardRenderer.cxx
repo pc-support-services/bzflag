@@ -646,10 +646,10 @@ void ScoreboardRenderer::drawRoamTarget(float _x0, float _y0,
     glDisable(GL_TEXTURE_2D);
     static GLBatch batch;
     batch.begin(GL_LINES);
-    glColor4fv(c0);
+    batch.color4fv(c0);
     batch.vertex2f(x0, y1);
     batch.vertex2f(x1, y1);
-    glColor4fv(c1);
+    batch.color4fv(c1);
     batch.vertex2f(x0, y0);
     batch.vertex2f(x1, y0);
     batch.end();

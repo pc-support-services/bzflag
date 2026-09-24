@@ -65,6 +65,7 @@ extern int __beginendCount;
 #  define glNewList(list,mode)          bzNewList((list), (mode))
 #  define glGenLists(count)         bzGenLists((count))
 #  define glGenTextures(count, textures)    bzGenTextures((count), (textures))
+#  define glGenBuffers(count, buffers)      bzGenBuffers((count), (buffers))
 #  ifdef DEBUG_GL_MATRIX_STACKS
 #    define glPushMatrix()          bzPushMatrix()
 #    define glPopMatrix()           bzPopMatrix()
@@ -74,13 +75,16 @@ extern int __beginendCount;
 // always swap these calls (context protection)
 #define glDeleteLists(base, count)      bzDeleteLists((base), (count))
 #define glDeleteTextures(count, textures)   bzDeleteTextures((count), (textures))
+#define glDeleteBuffers(count, buffers)     bzDeleteBuffers((count), (buffers))
 
 // these are housed at the end of OpenGLGState.cxx, for now
 extern void   bzNewList(GLuint list, GLenum mode);
 extern GLuint bzGenLists(GLsizei count);
 extern void   bzGenTextures(GLsizei count, GLuint *textures);
+extern void   bzGenBuffers(GLsizei count, GLuint *buffers);
 extern void   bzDeleteLists(GLuint base, GLsizei count);
 extern void   bzDeleteTextures(GLsizei count, const GLuint *textures);
+extern void   bzDeleteBuffers(GLsizei count, const GLuint *buffers);
 extern void   bzPushMatrix();
 extern void   bzPopMatrix();
 extern void   bzMatrixMode(GLenum mode);

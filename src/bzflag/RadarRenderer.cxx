@@ -1236,7 +1236,6 @@ void RadarRenderer::renderBasesAndTeles()
     const ObstacleList& teleporters = OBSTACLEMGR.getTeles();
     int count = teleporters.size();
     static GLBatch batch;
-    batch.begin(GL_LINES);
     for (i = 0; i < count; i++)
     {
         const Teleporter & tele = *((const Teleporter *) teleporters[i]);
@@ -1245,7 +1244,8 @@ void RadarRenderer::renderBasesAndTeles()
             const float z = tele.getPosition ()[2];
             const float bh = tele.getHeight ();
             const float cs = colorScale (z, bh);
-            glColor4f (1.0f * cs, 1.0f * cs, 0.25f * cs, transScale (z, bh));
+            batch.begin(GL_LINES);
+            batch.color4f (1.0f * cs, 1.0f * cs, 0.25f * cs, transScale (z, bh));
             const float c = cosf (tele.getRotation ());
             const float s = sinf (tele.getRotation ());
             const float wx = c * tele.getWidth (), wy = s * tele.getWidth ();
@@ -1265,13 +1265,15 @@ void RadarRenderer::renderBasesAndTeles()
 
             batch.vertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
             batch.vertex2f (pos[0] - wx - hx, pos[1] - wy - hy);
+            batch.end();
         }
         else
         {
             const float z = tele.getPosition ()[2];
             const float bh = tele.getHeight ();
             const float cs = colorScale (z, bh);
-            glColor4f (1.0f * cs, 1.0f * cs, 0.25f * cs, transScale (z, bh));
+            batch.begin(GL_LINES);
+            batch.color4f (1.0f * cs, 1.0f * cs, 0.25f * cs, transScale (z, bh));
             const float tw = tele.getBreadth ();
             const float c = tw * cosf (tele.getRotation ());
             const float s = tw * sinf (tele.getRotation ());
@@ -1280,9 +1282,9 @@ void RadarRenderer::renderBasesAndTeles()
             batch.vertex2f (pos[0] + s, pos[1] - c);
             batch.vertex2f (pos[0] + s, pos[1] - c);
             batch.vertex2f (pos[0] - s, pos[1] + c);
+            batch.end();
         }
     }
-    batch.end();
 
     return;
 }
