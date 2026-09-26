@@ -29,6 +29,7 @@
 #include "playing.h"
 #include "HUDui.h"
 #include "ServerListFilter.h"
+#include "ServerQueryPlayers.h"
 
 const int ServerMenu::NumReadouts = 24;
 const int ServerMenu::NumItems = 10;
@@ -262,6 +263,18 @@ ServerMenu::ServerMenu()
     help2->setFontFace(MainMenu::getFontFace());
     help2->setString("1 to 9 for quick filters, 0 to clear, e to edit quick filters, ? for filter help");
     getControls().push_back(help2);
+
+    // online players readout (direct BZFS query), sits in the left
+    // column below the team count readouts
+    playersLabel = new HUDuiLabel;
+    playersLabel->setFontFace(MainMenu::getFontFace());
+    playersLabel->setString("");
+    getControls().push_back(playersLabel);
+
+    playersLabel2 = new HUDuiLabel;
+    playersLabel2->setFontFace(MainMenu::getFontFace());
+    playersLabel2->setString("");
+    getControls().push_back(playersLabel2);
 
     // set initial focus
     setFocus(status);
@@ -745,6 +758,13 @@ void ServerMenu::pick()
         ((HUDuiLabel*)listHUD[20])->setString("");
         ((HUDuiLabel*)listHUD[21])->setString("");
     }
+
+    // ask the selected server directly for its player list (BZFS
+    // MsgQueryPlayers handshake, no third-party service).  pump() runs
+    // from playingCB each frame; the label fills in as packets arrive.
+    const std::string addrName = item.getAddrName();
+    ServerQueryPlayers::instance().queryServer(addrName);
+    updatePlayersLabel(addrName);
 }
 
 
@@ -870,16 +890,28 @@ void ServerMenu::resize(int _width, int _height)
         label->setPosition(x, y);
     }
 
-    y = ((HUDuiLabel*)listHUD[7])->getY(); //reset bottom to last team label
+    y = ((HUDuiLabel*)listHUD[7])->getY(); // bottom of last team label
 
-    // reposition search status readout
+    // reposition online players readout: left column, below the team
+    // counts, same font size as the readout labels
+    {
+        const float leftX = 0.125f * (float)_width;
+        playersLabel->setFontSize(fontSize);
+        playersLabel2->setFontSize(fontSize);
+        const float lineH = fontHeight;
+        playersLabel->setPosition(leftX, y - 1.5f * lineH);
+        playersLabel2->setPosition(leftX, y - 2.5f * lineH);
+    }
+
+    // reposition search status readout (dropped 2 extra lines to clear
+    // the two-line Online: readout above it)
     {
         fontSize = (float)_height / 36.0f;
         float fontHt = fm.getStrHeight(MainMenu::getFontFace(), fontSize, " ");
         status->setFontSize(fontSize);
         const float statusWidth = fm.getStrLength(status->getFontFace(), fontSize, status->getString());
         x = 0.5f * ((float)_width - statusWidth);
-        y -= 1.5f * fontHt;
+        y -= 3.5f * fontHt;
         status->setPosition(x, y);
     }
 
@@ -992,11 +1024,105 @@ void ServerMenu::updateStatus()
 }
 
 
+void ServerMenu::updatePlayersLabel(const std::string& addrName)
+{
+    // word-wrap the player list across the two left-column lines
+    const std::string playersLine =
+        ServerQueryPlayers::instance().getPlayersString(addrName);
+    if (playersLine.empty())
+    {
+        playersLabel->setString("");
+        playersLabel2->setString("");
+        return;
+    }
+
+    FontManager &fm = FontManager::instance();
+    const float avail = 0.75f * (float)width; // wrap only near screen edge
+    const std::string prefix = ANSI_STR_FG_WHITE "Online: " ANSI_STR_RESET;
+    const std::string sep = ANSI_STR_FG_BLACK ", " ANSI_STR_RESET;
+
+    // split player entries (they arrive comma-separated with ANSI codes)
+    std::vector<std::string> items;
+    std::string::size_type pos = 0;
+    while (true)
+    {
+        const std::string::size_type comma = playersLine.find(", ", pos);
+        if (comma == std::string::npos)
+        {
+            items.push_back(playersLine.substr(pos));
+            break;
+        }
+        items.push_back(playersLine.substr(pos, comma - pos));
+        pos = comma + 2;
+    }
+
+    // greedily fill line 1, overflow into line 2
+    std::string line1, line2;
+    float w = fm.getStrLength(playersLabel->getFontFace(),
+                              playersLabel->getFontSize(),
+                              stripAnsiCodes(prefix));
+    for (size_t i = 0; i < items.size(); i++)
+    {
+        const float iw = fm.getStrLength(playersLabel->getFontFace(),
+                                         playersLabel->getFontSize(),
+                                         stripAnsiCodes(items[i]));
+        const float sw = fm.getStrLength(playersLabel->getFontFace(),
+                                         playersLabel->getFontSize(),
+                                         stripAnsiCodes(sep));
+        if (!line1.empty() && w + sw + iw > avail)
+        {
+            // line 1 full
+            if (line2.empty())
+                line2 = items[i];
+            else
+            {
+                float w2 = fm.getStrLength(playersLabel->getFontFace(),
+                                           playersLabel->getFontSize(),
+                                           stripAnsiCodes(line2));
+                if (w2 + sw + iw <= avail)
+                    line2 += sep + items[i];
+                else
+                    break; // both lines full
+            }
+        }
+        else
+        {
+            line1 += (line1.empty() ? "" : sep) + items[i];
+            w += (line1.empty() ? 0.0f : sw) + iw;
+        }
+    }
+
+    playersLabel->setString(prefix + line1);
+    playersLabel2->setString(line2);
+}
+
+
 void ServerMenu::playingCB(void* _self)
 {
-    ((ServerMenu*)_self)->realServerList.checkEchos(getStartupInfo());
+    ServerMenu* menu = ((ServerMenu*)_self);
+    menu->realServerList.checkEchos(getStartupInfo());
 
-    ((ServerMenu*)_self)->updateStatus();
+    // drive the in-progress direct player query and refresh the label
+    ServerQueryPlayers& sqp = ServerQueryPlayers::instance();
+    if (sqp.isActive())
+        sqp.pump();
+    else if (menu->selectedIndex >= 0 &&
+             menu->selectedIndex < (int)menu->serverList.size())
+    {
+        // no query running: re-arm one for the selected server.
+        // covers failed/timeout/finished queries and servers that came
+        // back up; throttle inside queryServer() keeps this cheap.
+        sqp.queryServer(menu->serverList.getServers()
+                        [menu->selectedIndex].getAddrName());
+    }
+    if (menu->selectedIndex >= 0 &&
+            menu->selectedIndex < (int)menu->serverList.size())
+    {
+        const ServerItem& it = menu->serverList.getServers()[menu->selectedIndex];
+        menu->updatePlayersLabel(it.getAddrName());
+    }
+
+    menu->updateStatus();
 }
 
 // Local Variables: ***

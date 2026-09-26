@@ -144,6 +144,8 @@ bzflag_SOURCES =			\
 	ServerListFilterMenu.h		\
 	ServerMenu.cxx			\
 	ServerMenu.h			\
+	ServerQueryPlayers.cxx		\
+	ServerQueryPlayers.h		\
 	ServerStartMenu.cxx		\
 	ServerStartMenu.h		\
 	ShockWaveStrategy.cxx		\

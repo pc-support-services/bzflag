@@ -99,6 +99,27 @@ A full development log (every change, bug, and measurement) is kept in
   (bzGenBuffers/bzDeleteBuffers), fan-run draw-mode tagging, and several
   raw-GL-inside-batch sites corrected; tree re-verified clean.
 
+## Client feature: online player list in the server menu (2026-09-26)
+
+- New `ServerQueryPlayers` (src/bzflag): asks the selected game server
+  directly for its player list over the standard BZFS handshake — TCP
+  connect, BZFLAG connect header, `MsgQueryPlayers` ('qp') request; the
+  server answers with a count header plus one `MsgAddPlayer` ('ap') per
+  online player. Callsign and team are kept, everything else discarded.
+  No third-party service, no list-server change, server code untouched.
+- ServerMenu shows the result as an "Online:" line in the left column
+  below the team counts (same font as the readouts), team-colored
+  callsigns, wrapping to a second line only when the first would run
+  off the screen edge.
+- Robustness: non-blocking connect polled to completion before the
+  header is sent (fixed a send-before-connected race that broke every
+  non-loopback server), partial TCP packets wait for more bytes instead
+  of aborting, failed/timeout queries auto-retry (2 s throttle, 8 s
+  timeout) with no selection change needed.
+- Verified protocol-level against a live local bzfs (empty server and
+  client-joined server) and signed off in-game by the user on real
+  servers (debs 2.4.31-28 .. -32).
+
 ## Verification
 
 Every stage was built (make + make check), packaged (deb with icons and

@@ -72,6 +72,7 @@ public:
     void resize(int width, int height) override;
     void updateStatus();
     void setFindLabel(const std::string& label);
+    void updatePlayersLabel(const std::string& addrName);
 
     bool getFind() const;
     void setFind(bool mode, bool clear = false);
@@ -98,6 +99,8 @@ private:
     HUDuiLabel* status;
     HUDuiLabel* help1;
     HUDuiLabel* help2;
+    HUDuiLabel* playersLabel;
+    HUDuiLabel* playersLabel2;
 
     HUDuiLabel* pageLabel;
     int selectedIndex;
