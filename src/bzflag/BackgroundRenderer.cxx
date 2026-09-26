@@ -1247,7 +1247,7 @@ void BackgroundRenderer::drawGroundShadows(
     shadowProjection[8] = -sunDirection[0] / sunDirection[2];
     shadowProjection[9] = -sunDirection[1] / sunDirection[2];
     shadowProjection[1] = shadowProjection[2] =
-                                  shadowProjection[3] = shadowProjection[4] =
+                              shadowProjection[3] = shadowProjection[4] =
                                           shadowProjection[6] = shadowProjection[7] =
                                                   shadowProjection[10] = shadowProjection[11] =
                                                           shadowProjection[12] = shadowProjection[13] =
