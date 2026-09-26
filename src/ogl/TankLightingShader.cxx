@@ -232,7 +232,7 @@ bool TankLightingShader::init()
     if (!GLEW_VERSION_2_0)
     {
         logDebugMessage(1, "TankLightingShader: GL 2.0 not available, "
-                           "staying on fixed-function\n");
+                        "staying on fixed-function\n");
         return false;
     }
 
