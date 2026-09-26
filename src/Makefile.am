@@ -21,9 +21,9 @@ SUBDIRS = \
 	common \
 	net \
 	game \
+	ogl \
 	geometry \
 	obstacle \
-	ogl \
 	scene \
 	platform \
 	mediafile \
