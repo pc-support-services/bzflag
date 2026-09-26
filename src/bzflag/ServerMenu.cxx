@@ -30,6 +30,8 @@
 #include "HUDui.h"
 #include "ServerListFilter.h"
 #include "ServerQueryPlayers.h"
+#include "AnsiCodes.h"
+#include "ServerMapPreview.h"
 
 const int ServerMenu::NumReadouts = 24;
 const int ServerMenu::NumItems = 10;
@@ -275,6 +277,12 @@ ServerMenu::ServerMenu()
     playersLabel2->setFontFace(MainMenu::getFontFace());
     playersLabel2->setString("");
     getControls().push_back(playersLabel2);
+
+    // top-down map outline of the selected server, right of the list
+    mapPreview = new HUDuiMapPreview;
+    mapPreview->setFontFace(MainMenu::getFontFace());
+    mapPreview->setHint("");
+    getControls().push_back(mapPreview);
 
     // set initial focus
     setFocus(status);
@@ -765,6 +773,26 @@ void ServerMenu::pick()
     const std::string addrName = item.getAddrName();
     ServerQueryPlayers::instance().queryServer(addrName);
     updatePlayersLabel(addrName);
+
+    // ask the selected server for its map outline (world hash + cache /
+    // MsgGetWorld download).  pump() runs from playingCB each frame.
+    ServerMapPreview& smp = ServerMapPreview::instance();
+    smp.queryServer(addrName);
+    switch (smp.getState(addrName))
+    {
+        case ServerMapPreview::Ready:
+            mapPreview->setHint("");
+            break;
+        case ServerMapPreview::Busy:
+            mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
+            break;
+        case ServerMapPreview::Failed:
+            mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
+            break;
+        default:
+            mapPreview->setHint(ANSI_STR_FG_BLACK "map: ...");
+            break;
+    }
 }
 
 
@@ -840,6 +868,8 @@ void ServerMenu::dismiss()
 {
     // no more callbacks
     removePlayingCallback(&playingCB, this);
+    // drop any pending map fetch
+    ServerMapPreview::instance().cancel();
     // save any new token we got
     // FIXME myTank.token = serverList.token;
 }
@@ -935,6 +965,20 @@ void ServerMenu::resize(int _width, int _height)
         const float help2Width = fm.getStrLength(help2->getFontFace(), fontSize, help2->getString());
         help1->setPosition(0.5f * ((float)_width - help1Width), fontHt * 1.5f /* near bottom of screen */);
         help2->setPosition(0.5f * ((float)_width - help2Width), fontHt * 0.5f /* near bottom of screen */);
+    }
+
+    // reposition map preview: right of the server list, spanning from
+    // the readout block down to just above the help lines
+    {
+        const float panelX = 0.795f * (float)_width;
+        const float panelW = 0.185f * (float)_width;
+        const float topY = y0;
+        const float bottomY = help2->getY() + fontHeight * 3.0f;
+        const float panelH = (topY - bottomY) > fontHeight * 4.0f
+                             ? (topY - bottomY) : fontHeight * 4.0f;
+        mapPreview->setFontSize(fontSize);
+        mapPreview->setPosition(panelX, bottomY);
+        mapPreview->setSize(panelW, panelH);
     }
 
     // position page readout and server item list
@@ -1120,6 +1164,33 @@ void ServerMenu::playingCB(void* _self)
     {
         const ServerItem& it = menu->serverList.getServers()[menu->selectedIndex];
         menu->updatePlayersLabel(it.getAddrName());
+
+        // drive the in-progress map fetch and refresh the hint text
+        ServerMapPreview& smp = ServerMapPreview::instance();
+        if (smp.isActive())
+            smp.pump();
+        else
+        {
+            // no fetch running: re-arm one for the selected server.
+            // covers failed/timeout fetches; throttle inside
+            // queryServer() keeps this cheap.
+            smp.queryServer(it.getAddrName());
+        }
+        switch (smp.getState(it.getAddrName()))
+        {
+            case ServerMapPreview::Ready:
+                menu->mapPreview->setHint("");
+                break;
+            case ServerMapPreview::Busy:
+                menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
+                break;
+            case ServerMapPreview::Failed:
+                menu->mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
+                break;
+            default:
+                menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: ...");
+                break;
+        }
     }
 
     menu->updateStatus();

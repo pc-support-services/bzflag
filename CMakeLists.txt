@@ -329,6 +329,8 @@ set(BZFLAG_SRCS
     src/bzflag/ServerListFilterMenu.cxx
     src/bzflag/ServerMenu.cxx
     src/bzflag/ServerQueryPlayers.cxx
+    src/bzflag/ServerMapPreview.cxx
+    src/bzflag/HUDuiMapPreview.cxx
     src/bzflag/ServerStartMenu.cxx
     src/bzflag/ShockWaveStrategy.cxx
     src/bzflag/ShotPath.cxx

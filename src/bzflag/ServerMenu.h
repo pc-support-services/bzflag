@@ -31,6 +31,7 @@
 #include "HUDuiDefaultKey.h"
 #include "HUDuiLabel.h"
 #include "HUDuiTypeIn.h"
+#include "HUDuiMapPreview.h"
 #include "ServerListFilter.h"
 
 
@@ -101,6 +102,7 @@ private:
     HUDuiLabel* help2;
     HUDuiLabel* playersLabel;
     HUDuiLabel* playersLabel2;
+    HUDuiMapPreview* mapPreview;
 
     HUDuiLabel* pageLabel;
     int selectedIndex;
