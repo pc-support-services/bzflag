@@ -103,9 +103,7 @@ void GLBatch::stampVertex()
 void GLBatch::useColors(int size)
 {
     if (csize != size)
-    {
         csize = size;
-    }
 }
 
 
@@ -217,7 +215,8 @@ void GLBatch::end()
     {
         static int dbgCount = 0;
         if (dbgCount++ < 400)
-            fprintf(stderr, "GLBatch mode=%d count=%d csize=%d cols=%d tex=%d norm=%d color=%.2f,%.2f,%.2f,%.2f v=(%.1f,%.1f)-(%.1f,%.1f)\n",
+            fprintf(stderr,
+                    "GLBatch mode=%d count=%d csize=%d cols=%d tex=%d norm=%d color=%.2f,%.2f,%.2f,%.2f v=(%.1f,%.1f)-(%.1f,%.1f)\n",
                     (int)mode, (int)verts.size() / 3, csize, (int)cols.size(),
                     (int)useTex, (int)useNorm,
                     curColor[0], curColor[1], curColor[2], curColor[3],

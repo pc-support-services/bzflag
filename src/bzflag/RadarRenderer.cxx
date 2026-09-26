@@ -139,7 +139,7 @@ void RadarRenderer::setTankColor(const Player* player)
     else
     {
         const float* rcolor = Team::getRadarColor(myTank->getFlag() ==
-                                       Flags::Colorblindness ? RogueTeam : player->getTeam());
+                              Flags::Colorblindness ? RogueTeam : player->getTeam());
         colorScratch[0] = rcolor[0];
         colorScratch[1] = rcolor[1];
         colorScratch[2] = rcolor[2];
@@ -1215,13 +1215,13 @@ void RadarRenderer::renderBasesAndTeles()
                 const float beta = atan2f(base[5], base[4]);
                 const float r = hypotf(base[4], base[5]);
                 batch.vertex2f(base[0] + r * cosf(base[3] + beta),
-                           base[1] + r * sinf(base[3] + beta));
+                               base[1] + r * sinf(base[3] + beta));
                 batch.vertex2f(base[0] + r * cosf((float)(base[3] - beta + M_PI)),
-                           base[1] + r * sinf((float)(base[3] - beta + M_PI)));
+                               base[1] + r * sinf((float)(base[3] - beta + M_PI)));
                 batch.vertex2f(base[0] + r * cosf((float)(base[3] + beta + M_PI)),
-                           base[1] + r * sinf((float)(base[3] + beta + M_PI)));
+                               base[1] + r * sinf((float)(base[3] + beta + M_PI)));
                 batch.vertex2f(base[0] + r * cosf(base[3] - beta),
-                           base[1] + r * sinf(base[3] - beta));
+                               base[1] + r * sinf(base[3] - beta));
                 batch.end();
             }
         }

@@ -101,7 +101,7 @@ bool ShadowMapFBO::checkState(int newSize)
     if (status != GL_FRAMEBUFFER_COMPLETE)
     {
         logDebugMessage(1, "ShadowMapFBO: incomplete (0x%04x), "
-                        "shadow mapping disabled\n", status);
+                           "shadow mapping disabled\n", status);
         usable = false;
         return false;
     }

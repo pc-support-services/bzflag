@@ -1453,16 +1453,16 @@ void TankSceneNode::TankRenderNode::renderLights()
 
         batch1.color3fv(lights[0]);
         batch1.vertex3f(lights[0][3] * scale[0],
-                   lights[0][4] * scale[1],
-                   lights[0][5] * scale[2]);
+                        lights[0][4] * scale[1],
+                        lights[0][5] * scale[2]);
         batch1.color3fv(lights[1]);
         batch1.vertex3f(lights[1][3] * scale[0],
-                   lights[1][4] * scale[1],
-                   lights[1][5] * scale[2]);
+                        lights[1][4] * scale[1],
+                        lights[1][5] * scale[2]);
         batch1.color3fv(lights[2]);
         batch1.vertex3f(lights[2][3] * scale[0],
-                   lights[2][4] * scale[1],
-                   lights[2][5] * scale[2]);
+                        lights[2][4] * scale[1],
+                        lights[2][5] * scale[2]);
     }
     batch1.end();
 

@@ -86,7 +86,10 @@ public:
     // world bounds for scaling the preview
     void getBounds(float& minX, float& maxX, float& minY, float& maxY) const
     {
-        minX = boundMinX; maxX = boundMaxX; minY = boundMinY; maxY = boundMaxY;
+        minX = boundMinX;
+        maxX = boundMaxX;
+        minY = boundMinY;
+        maxY = boundMaxY;
     }
 
 private:

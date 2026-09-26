@@ -880,7 +880,7 @@ void WeatherRenderer::drawDrop(rain& drop, const SceneRenderer& sr)
 
         rainBatch.color4f(rainColor[1][0], rainColor[1][1], rainColor[1][2], alphaVal);
         rainBatch.vertex3f(drop.pos[0], drop.pos[1],
-                   drop.pos[2] + (rainSize[1] - (drop.speed * 0.15f)));
+                           drop.pos[2] + (rainSize[1] - (drop.speed * 0.15f)));
     }
     else
     {

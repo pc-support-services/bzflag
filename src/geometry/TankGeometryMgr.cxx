@@ -42,8 +42,8 @@ using namespace TankGeometryUtils;
 
 // one interleaved VBO batch per (shadow, lod, size, part)
 static TankGeometryUtils::PartBatch
-    partBatches[TankGeometryEnums::LastTankShadow][TankGeometryEnums::LastTankLOD]
-               [TankGeometryEnums::LastTankSize][TankGeometryEnums::LastTankPart];
+partBatches[TankGeometryEnums::LastTankShadow][TankGeometryEnums::LastTankLOD]
+[TankGeometryEnums::LastTankSize][TankGeometryEnums::LastTankPart];
 
 // triangle counts
 static int partTriangles[TankGeometryEnums::LastTankShadow][TankGeometryEnums::LastTankLOD]
@@ -534,7 +534,8 @@ static void emitFanVertex(const GLfloat* vtx)
     // vector is UB if the insert reallocates
     const GLfloat* data = &captureBatch->data[runFirst * 8];
     const GLfloat v0[8] = {data[0], data[1], data[2], data[3],
-                           data[4], data[5], data[6], data[7]};
+                           data[4], data[5], data[6], data[7]
+                          };
     captureBatch->data.insert(captureBatch->data.end(), v0, v0 + 8);
     captureBatch->data.insert(captureBatch->data.end(), lastVertex, lastVertex + 8);
     captureBatch->data.insert(captureBatch->data.end(), vtx, vtx + 8);

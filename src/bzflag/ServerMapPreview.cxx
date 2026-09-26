@@ -555,11 +555,17 @@ void ServerMapPreview::extractOutlines()
             const float c = cosf(rot), s = sinf(rot);
             const float wx = c * w, wy = s * w;
             const float hx = -s * b, hy = c * b;
-            q.x[0] = pos[0] - wx - hx; q.y[0] = pos[1] - wy - hy;
-            q.x[1] = pos[0] + wx - hx; q.y[1] = pos[1] + wy - hy;
-            q.x[2] = pos[0] + wx + hx; q.y[2] = pos[1] + wy + hy;
-            q.x[3] = pos[0] - wx + hx; q.y[3] = pos[1] - wy + hy;
-            q.color[0] = color[0]; q.color[1] = color[1]; q.color[2] = color[2];
+            q.x[0] = pos[0] - wx - hx;
+            q.y[0] = pos[1] - wy - hy;
+            q.x[1] = pos[0] + wx - hx;
+            q.y[1] = pos[1] + wy - hy;
+            q.x[2] = pos[0] + wx + hx;
+            q.y[2] = pos[1] + wy + hy;
+            q.x[3] = pos[0] - wx + hx;
+            q.y[3] = pos[1] - wy + hy;
+            q.color[0] = color[0];
+            q.color[1] = color[1];
+            q.color[2] = color[2];
             quads.push_back(q);
         }
     };
@@ -634,7 +640,9 @@ void ServerMapPreview::extractOutlines()
                 continue;
             Quad q;
             static const float meshColor[3] = { 0.6f, 0.6f, 0.6f };
-            q.color[0] = meshColor[0]; q.color[1] = meshColor[1]; q.color[2] = meshColor[2];
+            q.color[0] = meshColor[0];
+            q.color[1] = meshColor[1];
+            q.color[2] = meshColor[2];
             for (int v = 0; v < 4; v++)
             {
                 const int vi = (v < vc) ? v : vc - 1;

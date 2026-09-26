@@ -1189,7 +1189,7 @@ void BackgroundRenderer::drawGroundCentered()
             {
                 const int index = indices[q][c];
                 batch9.texCoord2f(vertices[index][0] * repeat,
-                             vertices[index][1] * repeat);
+                                  vertices[index][1] * repeat);
                 batch9.vertex2fv(vertices[index]);
             }
             batch9.end();
@@ -1248,10 +1248,10 @@ void BackgroundRenderer::drawGroundShadows(
     shadowProjection[9] = -sunDirection[1] / sunDirection[2];
     shadowProjection[1] = shadowProjection[2] =
                               shadowProjection[3] = shadowProjection[4] =
-                                          shadowProjection[6] = shadowProjection[7] =
-                                                  shadowProjection[10] = shadowProjection[11] =
-                                                          shadowProjection[12] = shadowProjection[13] =
-                                                                  shadowProjection[14] = 0.0f;
+                                      shadowProjection[6] = shadowProjection[7] =
+                                              shadowProjection[10] = shadowProjection[11] =
+                                                      shadowProjection[12] = shadowProjection[13] =
+                                                              shadowProjection[14] = 0.0f;
     glPushMatrix();
     glMultMatrixf(shadowProjection);
 
@@ -1407,7 +1407,7 @@ void BackgroundRenderer::drawGroundReceivers(SceneRenderer& renderer)
             for (j = 0; j <= receiverSlices; j++)
             {
                 batch12.vertex2f(receiverRingSize * angle[j][0],
-                           receiverRingSize * angle[j][1]);
+                                 receiverRingSize * angle[j][1]);
             }
         }
         batch12.end();
@@ -1591,7 +1591,7 @@ void BackgroundRenderer::drawAdvancedGroundReceivers(SceneRenderer& renderer)
             for (j = 0; j <= receiverSlices; j++)
             {
                 batch14.vertex2f(outerSize * angle[j][0],
-                           outerSize * angle[j][1]);
+                                 outerSize * angle[j][1]);
             }
         }
         batch14.end();

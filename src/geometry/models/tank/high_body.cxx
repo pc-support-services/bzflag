@@ -270,7 +270,7 @@ static int DrawLeftRearExaust ( void )
 int TankGeometryUtils::buildHighBody (void)
 {
     const int tris = DrawTankSides() + DrawCentralBody()
-                   + DrawRightRearExaust() + DrawLeftRearExaust();
+                     + DrawRightRearExaust() + DrawLeftRearExaust();
     return tris;
 }
 

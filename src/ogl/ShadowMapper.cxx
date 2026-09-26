@@ -77,10 +77,12 @@ static void buildSunView(const float* dir, GLfloat* m)
     if (rl < 1.0e-6f)
     {
         // sun straight up: use x axis
-        r[0] = 1.0f; r[1] = 0.0f;
+        r[0] = 1.0f;
+        r[1] = 0.0f;
         rl = 1.0f;
     }
-    r[0] /= rl; r[1] /= rl;
+    r[0] /= rl;
+    r[1] /= rl;
     // true up = cross(r, d)
     float u[3] =
     {
@@ -89,10 +91,22 @@ static void buildSunView(const float* dir, GLfloat* m)
         r[0]*d[1] - r[1]*d[0]
     };
 
-    m[0] = r[0]; m[4] = r[1]; m[8]  = r[2]; m[12] = 0.0f;
-    m[1] = u[0]; m[5] = u[1]; m[9]  = u[2]; m[13] = 0.0f;
-    m[2] = -d[0]; m[6] = -d[1]; m[10] = -d[2]; m[14] = 0.0f;
-    m[3] = 0.0f; m[7] = 0.0f; m[11] = 0.0f; m[15] = 1.0f;
+    m[0] = r[0];
+    m[4] = r[1];
+    m[8]  = r[2];
+    m[12] = 0.0f;
+    m[1] = u[0];
+    m[5] = u[1];
+    m[9]  = u[2];
+    m[13] = 0.0f;
+    m[2] = -d[0];
+    m[6] = -d[1];
+    m[10] = -d[2];
+    m[14] = 0.0f;
+    m[3] = 0.0f;
+    m[7] = 0.0f;
+    m[11] = 0.0f;
+    m[15] = 1.0f;
 }
 
 void ShadowMapper::renderShadowPass(SceneRenderer& renderer)
@@ -184,15 +198,27 @@ void ShadowMapper::updateEyeToSunClip(const ViewFrustum& frustum)
     const GLfloat* v = frustum.getViewMatrix();
     GLfloat inv[16];
     // transpose rotation part
-    inv[0] = v[0];  inv[4] = v[1];  inv[8]  = v[2];   inv[12] = 0.0f;
-    inv[1] = v[4];  inv[5] = v[5];  inv[9]  = v[6];   inv[13] = 0.0f;
-    inv[2] = v[8];  inv[6] = v[9];  inv[10] = v[10];  inv[14] = 0.0f;
+    inv[0] = v[0];
+    inv[4] = v[1];
+    inv[8]  = v[2];
+    inv[12] = 0.0f;
+    inv[1] = v[4];
+    inv[5] = v[5];
+    inv[9]  = v[6];
+    inv[13] = 0.0f;
+    inv[2] = v[8];
+    inv[6] = v[9];
+    inv[10] = v[10];
+    inv[14] = 0.0f;
     // translation: -R^T * t
     const float t[3] = { v[12], v[13], v[14] };
     inv[12] = -(v[0]*t[0] + v[1]*t[1] + v[2]*t[2]);
     inv[13] = -(v[4]*t[0] + v[5]*t[1] + v[6]*t[2]);
     inv[14] = -(v[8]*t[0] + v[9]*t[1] + v[10]*t[2]);
-    inv[3] = 0.0f; inv[7] = 0.0f; inv[11] = 0.0f; inv[15] = 1.0f;
+    inv[3] = 0.0f;
+    inv[7] = 0.0f;
+    inv[11] = 0.0f;
+    inv[15] = 1.0f;
 
     // eyeToSunClip = sunProj * sunView * inv
     GLfloat tmp[16];

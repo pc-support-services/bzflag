@@ -780,18 +780,18 @@ void ServerMenu::pick()
     smp.queryServer(addrName);
     switch (smp.getState(addrName))
     {
-        case ServerMapPreview::Ready:
-            mapPreview->setHint("");
-            break;
-        case ServerMapPreview::Busy:
-            mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
-            break;
-        case ServerMapPreview::Failed:
-            mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
-            break;
-        default:
-            mapPreview->setHint(ANSI_STR_FG_BLACK "map: ...");
-            break;
+    case ServerMapPreview::Ready:
+        mapPreview->setHint("");
+        break;
+    case ServerMapPreview::Busy:
+        mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
+        break;
+    case ServerMapPreview::Failed:
+        mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
+        break;
+    default:
+        mapPreview->setHint(ANSI_STR_FG_BLACK "map: ...");
+        break;
     }
 }
 
@@ -1178,18 +1178,18 @@ void ServerMenu::playingCB(void* _self)
         }
         switch (smp.getState(it.getAddrName()))
         {
-            case ServerMapPreview::Ready:
-                menu->mapPreview->setHint("");
-                break;
-            case ServerMapPreview::Busy:
-                menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
-                break;
-            case ServerMapPreview::Failed:
-                menu->mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
-                break;
-            default:
-                menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: ...");
-                break;
+        case ServerMapPreview::Ready:
+            menu->mapPreview->setHint("");
+            break;
+        case ServerMapPreview::Busy:
+            menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
+            break;
+        case ServerMapPreview::Failed:
+            menu->mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
+            break;
+        default:
+            menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: ...");
+            break;
         }
     }
 
