@@ -186,7 +186,7 @@ void ServerMapPreview::queryServer(const std::string& addrName)
     const int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     if (connect(fd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0 &&
-            errno != EINPROGRESS)
+            getErrno() != EINPROGRESS)
     {
         close(fd);
         fd = -1;
