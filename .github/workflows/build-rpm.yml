@@ -100,12 +100,17 @@ jobs:
           - Map preview: Caching status, per-server outlines, top-right layout
           EOF
 
-          # expand the payload file list relative to the payload dir
+          # expand the payload file list relative to the payload dir.
+          # files are staged under payload/usr; rpmbuild's --buildroot is
+          # BUILDROOT/bzflag so %files paths must exist under that root:
+          # copy the payload INTO the buildroot and list paths as /usr/...
           (
             cd payload
-            find usr -type f -printf '/%%p\n' | sed 's|/usr/|/usr/|' > "$TOP/SPECS/files.txt"
-            find usr -type d -printf '%%dir /%%p\n' >> "$TOP/SPECS/files.txt"
+            find usr -type f -printf '/%p\n' > "$TOP/SPECS/files.txt"
+            find usr -type d -printf '%%dir /%p\n' >> "$TOP/SPECS/files.txt"
           )
+          mkdir -p "$TOP/BUILDROOT/bzflag"
+          cp -a payload/. "$TOP/BUILDROOT/bzflag/"
           # replace the placeholder with the generated file list
           awk 'BEGIN{while((getline l < "'"$TOP"'/SPECS/files.txt")>0) fl=fl l "\n"}
                {gsub(/%pkg_payload/, fl)}1' "$TOP/SPECS/bzflag.spec" \
