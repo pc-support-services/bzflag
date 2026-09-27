@@ -1,32 +1,30 @@
-// Microsoft Visual C++ generated resource script.
-//
-/////////////////////////////////////////////////////////////////////////////
-// English (United States) resources
+// BZFlag Windows resource script (mingw windres compatible).
+// Original: MSVC/bzflag.rc, removed in eddec0fa2; restored 2026-09-27
+// for the msys2/mingw64 build so executables carry icon + version info.
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
+#include <winver.h>
 
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
 1 ICON "bzflag.ico"
 
-
-#endif
-
-
-#ifndef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 2 resource.
-//
-
-
-/////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
-
+1 VERSIONINFO
+FILEVERSION 2,4,31,0
+PRODUCTVERSION 2,4,31,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName",      "BZFlag"
+      VALUE "FileDescription",  "BZFlag client"
+      VALUE "FileVersion",      "2.4.31"
+      VALUE "InternalName",     "bzflag"
+      VALUE "OriginalFilename", "bzflag.exe"
+      VALUE "ProductName",      "BZFlag"
+      VALUE "ProductVersion",   "2.4.31"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
