@@ -125,8 +125,20 @@ ServerMapPreview& ServerMapPreview::instance()
 
 void ServerMapPreview::queryServer(const std::string& addrName)
 {
-    if (addrName.empty() || active)
+    if (addrName.empty())
         return;
+
+    if (active)
+    {
+        if (queryingAddr == addrName)
+            return; // already fetching this server
+        // selection moved on (up/down paging): drop the stale fetch so
+        // the newly selected server starts instead of being starved
+        // behind the old one.  the dropped server goes back to None so
+        // revisiting it re-fetches.
+        serverState[queryingAddr] = None;
+        finish(false);
+    }
 
     // already have this one?
     std::map<std::string, State>::const_iterator it = serverState.find(addrName);
@@ -229,6 +241,50 @@ float ServerMapPreview::getProgress() const
         return -1.0f;
     const float frac = (float)worldPtr / (float)worldTotal;
     return (frac < 0.0f) ? 0.0f : (frac > 1.0f) ? 1.0f : frac;
+}
+
+std::string ServerMapPreview::getHintText(const std::string& addrName) const
+{
+    if (isDownloading(addrName))
+    {
+        const float prog = getProgress();
+        char buf[16];
+        if (prog >= 0.0f)
+        {
+            sprintf(buf, "%d%%", (int)(prog * 100.0f + 0.5f));
+            return std::string("Caching: ") + buf;
+        }
+        return "Caching: ...";
+    }
+    return "Caching:";
+}
+
+const std::vector<ServerMapPreview::Quad>&
+ServerMapPreview::getQuads(const std::string& addrName) const
+{
+    std::map<std::string, Outline>::const_iterator it = serverOutlines.find(addrName);
+    if (it == serverOutlines.end())
+    {
+        static const std::vector<Quad> empty;
+        return empty;
+    }
+    return it->second.quads;
+}
+
+void ServerMapPreview::getBounds(const std::string& addrName,
+                                 float& minX, float& maxX,
+                                 float& minY, float& maxY) const
+{
+    std::map<std::string, Outline>::const_iterator it = serverOutlines.find(addrName);
+    if (it == serverOutlines.end())
+    {
+        minX = maxX = minY = maxY = 0.0f;
+        return;
+    }
+    minX = it->second.minX;
+    maxX = it->second.maxX;
+    minY = it->second.minY;
+    maxY = it->second.maxY;
 }
 
 // pull all available stream bytes into inBuf (non-blocking)
@@ -567,12 +623,16 @@ bool ServerMapPreview::loadWorld(const char* data, unsigned int length)
     World* world = builder->getWorld();
     delete builder;
 
-    // tag the fresh outlines with the server they belong to (do this
-    // BEFORE extractOutlines clears/rebuilds quads; on unpack failure
-    // the stale outline must not survive either)
-    outlinedAddr = queryingAddr;
-
     extractOutlines();
+
+    // snapshot the outlines for THIS server; paging back to it later
+    // re-shows the cached outline instead of a blank panel
+    Outline& outline = serverOutlines[queryingAddr];
+    outline.quads = quads;
+    outline.minX = boundMinX;
+    outline.maxX = boundMaxX;
+    outline.minY = boundMinY;
+    outline.maxY = boundMaxY;
 
     // tear the world down again (destructor clears the managers)
     delete world;

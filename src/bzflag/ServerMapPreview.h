@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stdio.h>
 
 // common interface headers
 #include "TimeKeeper.h"
@@ -77,6 +78,10 @@ public:
         return active && queryingAddr == addrName;
     }
 
+    // status text for THIS server's fetch: "Caching:" until the world
+    // size is known, then "Caching: N%" while chunks stream in
+    std::string getHintText(const std::string& addrName) const;
+
     // download progress 0..1, or -1.0 while the total size is unknown
     // (no first chunk yet) or no download is running
     float getProgress() const;
@@ -88,27 +93,13 @@ public:
         float color[3];
     };
 
-    // outline data for rendering (empty unless THIS server's outline
-    // is loaded; one server's outline never bleeds into another's)
-    const std::vector<Quad>& getQuads(const std::string& addrName) const
-    {
-        return (addrName == outlinedAddr) ? quads : emptyQuads;
-    }
+    // outline data for rendering (each Ready server keeps its own
+    // outline, so paging back up/down re-shows it instead of blanking)
+    const std::vector<Quad>& getQuads(const std::string& addrName) const;
 
     // world bounds for scaling the preview (this server's outline only)
     void getBounds(const std::string& addrName,
-                   float& minX, float& maxX, float& minY, float& maxY) const
-    {
-        if (addrName != outlinedAddr)
-        {
-            minX = maxX = minY = maxY = 0.0f;
-            return;
-        }
-        minX = boundMinX;
-        maxX = boundMaxX;
-        minY = boundMinY;
-        maxY = boundMaxY;
-    }
+                   float& minX, float& maxX, float& minY, float& maxY) const;
 
 private:
     ServerMapPreview();
@@ -147,11 +138,18 @@ private:
     uint32_t    worldTotal;         // total size (from first chunk)
     bool        gotFirstChunk;
 
-    // unpacked outlines
+    // unpacked outlines: single set in `quads` while building; each
+    // Ready server keeps a snapshot in the per-server cache so paging
+    // back up/down re-shows its outline instead of blanking
     std::vector<Quad> quads;
-    std::string     outlinedAddr;   // server whose outline `quads` holds
-    std::vector<Quad> emptyQuads;   // returned for other servers
     float       boundMinX, boundMaxX, boundMinY, boundMaxY;
+
+    struct Outline
+    {
+        std::vector<Quad> quads;
+        float minX, maxX, minY, maxY;
+    };
+    std::map<std::string, Outline> serverOutlines; // addr -> its outline
 
     // per-server state cache: "host:port" -> state
     std::map<std::string, State> serverState;

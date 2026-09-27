@@ -785,9 +785,7 @@ void ServerMenu::pick()
         mapPreview->setHint("");
         break;
     case ServerMapPreview::Busy:
-        // map not in local cache: being fetched right now (connect,
-        // hash, world download all read as "Caching" to the user)
-        mapPreview->setHint(ANSI_STR_FG_BLACK "Map: Caching");
+        mapPreview->setHint(ANSI_STR_FG_BLACK + smp.getHintText(addrName));
         break;
     case ServerMapPreview::Failed:
         mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
@@ -1187,8 +1185,8 @@ void ServerMenu::playingCB(void* _self)
             menu->mapPreview->setHint("");
             break;
         case ServerMapPreview::Busy:
-            // map not in local cache: being fetched right now
-            menu->mapPreview->setHint(ANSI_STR_FG_BLACK "Map: Caching");
+            menu->mapPreview->setHint(ANSI_STR_FG_BLACK +
+                                      smp.getHintText(it.getAddrName()));
             break;
         case ServerMapPreview::Failed:
             menu->mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
