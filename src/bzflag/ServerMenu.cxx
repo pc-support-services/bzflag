@@ -777,6 +777,7 @@ void ServerMenu::pick()
     // ask the selected server for its map outline (world hash + cache /
     // MsgGetWorld download).  pump() runs from playingCB each frame.
     ServerMapPreview& smp = ServerMapPreview::instance();
+    mapPreview->setCurrentAddr(addrName);
     smp.queryServer(addrName);
     switch (smp.getState(addrName))
     {
@@ -784,7 +785,9 @@ void ServerMenu::pick()
         mapPreview->setHint("");
         break;
     case ServerMapPreview::Busy:
-        mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
+        // map not in local cache: being fetched right now (connect,
+        // hash, world download all read as "Caching" to the user)
+        mapPreview->setHint(ANSI_STR_FG_BLACK "Map: Caching");
         break;
     case ServerMapPreview::Failed:
         mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");
@@ -967,13 +970,14 @@ void ServerMenu::resize(int _width, int _height)
         help2->setPosition(0.5f * ((float)_width - help2Width), fontHt * 0.5f /* near bottom of screen */);
     }
 
-    // reposition map preview: right of the server list, spanning from
-    // the readout block down to just above the help lines
+    // reposition map preview: top right corner, aligned with the top of
+    // the server readout columns and stopping above the server list so
+    // long descriptions never sit under it
     {
         const float panelX = 0.795f * (float)_width;
-        const float panelW = 0.185f * (float)_width;
+        const float panelW = 0.19f * (float)_width;
         const float topY = y0;
-        const float bottomY = help2->getY() + fontHeight * 3.0f;
+        const float bottomY = y0 - 0.30f * (float)_height;
         const float panelH = (topY - bottomY) > fontHeight * 4.0f
                              ? (topY - bottomY) : fontHeight * 4.0f;
         mapPreview->setFontSize(fontSize);
@@ -1176,13 +1180,15 @@ void ServerMenu::playingCB(void* _self)
             // queryServer() keeps this cheap.
             smp.queryServer(it.getAddrName());
         }
+        menu->mapPreview->setCurrentAddr(it.getAddrName());
         switch (smp.getState(it.getAddrName()))
         {
         case ServerMapPreview::Ready:
             menu->mapPreview->setHint("");
             break;
         case ServerMapPreview::Busy:
-            menu->mapPreview->setHint(ANSI_STR_FG_BLACK "map: loading...");
+            // map not in local cache: being fetched right now
+            menu->mapPreview->setHint(ANSI_STR_FG_BLACK "Map: Caching");
             break;
         case ServerMapPreview::Failed:
             menu->mapPreview->setHint(ANSI_STR_FG_BLACK "no map preview");

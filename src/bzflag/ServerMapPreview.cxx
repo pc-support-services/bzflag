@@ -223,6 +223,14 @@ ServerMapPreview::State ServerMapPreview::getState(const std::string& addrName) 
     return it->second;
 }
 
+float ServerMapPreview::getProgress() const
+{
+    if (!gotFirstChunk || worldTotal == 0)
+        return -1.0f;
+    const float frac = (float)worldPtr / (float)worldTotal;
+    return (frac < 0.0f) ? 0.0f : (frac > 1.0f) ? 1.0f : frac;
+}
+
 // pull all available stream bytes into inBuf (non-blocking)
 static void drainStream(int fd, std::vector<char>& inBuf)
 {
@@ -558,6 +566,11 @@ bool ServerMapPreview::loadWorld(const char* data, unsigned int length)
     }
     World* world = builder->getWorld();
     delete builder;
+
+    // tag the fresh outlines with the server they belong to (do this
+    // BEFORE extractOutlines clears/rebuilds quads; on unpack failure
+    // the stale outline must not survive either)
+    outlinedAddr = queryingAddr;
 
     extractOutlines();
 

@@ -70,6 +70,17 @@ public:
 
     State getState(const std::string& addrName) const;
 
+    // true while THIS server's fetch is in flight (connect, hash or
+    // world download -- i.e. the map is being cached right now)
+    bool isDownloading(const std::string& addrName) const
+    {
+        return active && queryingAddr == addrName;
+    }
+
+    // download progress 0..1, or -1.0 while the total size is unknown
+    // (no first chunk yet) or no download is running
+    float getProgress() const;
+
     // obstacle footprints extracted from the world database
     struct Quad
     {
@@ -77,15 +88,22 @@ public:
         float color[3];
     };
 
-    // outline data for rendering (empty until Ready)
-    const std::vector<Quad>& getQuads() const
+    // outline data for rendering (empty unless THIS server's outline
+    // is loaded; one server's outline never bleeds into another's)
+    const std::vector<Quad>& getQuads(const std::string& addrName) const
     {
-        return quads;
+        return (addrName == outlinedAddr) ? quads : emptyQuads;
     }
 
-    // world bounds for scaling the preview
-    void getBounds(float& minX, float& maxX, float& minY, float& maxY) const
+    // world bounds for scaling the preview (this server's outline only)
+    void getBounds(const std::string& addrName,
+                   float& minX, float& maxX, float& minY, float& maxY) const
     {
+        if (addrName != outlinedAddr)
+        {
+            minX = maxX = minY = maxY = 0.0f;
+            return;
+        }
         minX = boundMinX;
         maxX = boundMaxX;
         minY = boundMinY;
@@ -131,6 +149,8 @@ private:
 
     // unpacked outlines
     std::vector<Quad> quads;
+    std::string     outlinedAddr;   // server whose outline `quads` holds
+    std::vector<Quad> emptyQuads;   // returned for other servers
     float       boundMinX, boundMaxX, boundMinY, boundMaxY;
 
     // per-server state cache: "host:port" -> state

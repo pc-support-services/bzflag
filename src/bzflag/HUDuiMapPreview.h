@@ -34,6 +34,13 @@ public:
     // render placeholder text while the fetch runs
     void setHint(const std::string& hint);
 
+    // server whose outline this control should draw ("" = none);
+    // ServerMenu::setSelected keeps this in step with the selection
+    void setCurrentAddr(const std::string& addrName)
+    {
+        currentAddr = addrName;
+    }
+
 protected:
     void        onSetFont() override;
     bool        doKeyPress(const BzfKeyEvent&) override;
@@ -42,6 +49,7 @@ protected:
 
 private:
     std::string hint;
+    std::string currentAddr;    // server whose outline to draw
 };
 
 #endif //__HUDUIMAPPREVIEW_H__

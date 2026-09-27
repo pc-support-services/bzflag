@@ -65,29 +65,34 @@ void HUDuiMapPreview::doRender()
 
     ServerMapPreview& smp = ServerMapPreview::instance();
 
-    if (smp.getQuads().empty())
+    // status text: a non-empty hint ("map: cacheing...", "downloading
+    // N%", "no map preview") owns the panel until cleared.  an empty
+    // hint means this server's outline (if loaded) is drawn instead.
+    if (!hint.empty() && getFontFace() >= 0)
     {
-        // nothing yet: show the hint (or nothing)
-        if (!hint.empty() && getFontFace() >= 0)
-        {
-            FontManager &fm = FontManager::instance();
-            glColor3f(0.7f, 0.7f, 0.7f);
-            fm.drawString(x + w * 0.5f -
-                          fm.getStrLength(getFontFace(), getFontSize(),
-                                          stripAnsiCodes(hint)) * 0.5f,
-                          y + h * 0.5f, 0, getFontFace(), getFontSize(), hint);
-        }
+        FontManager &fm = FontManager::instance();
+        glColor3f(0.7f, 0.7f, 0.7f);
+        fm.drawString(x + w * 0.5f -
+                      fm.getStrLength(getFontFace(), getFontSize(),
+                                      stripAnsiCodes(hint)) * 0.5f,
+                      y + h * 0.5f, 0, getFontFace(), getFontSize(), hint);
         return;
     }
 
-    // fit the world bounds into the panel, centered
+    // fit the world bounds into the panel, centered (this server's
+    // outline only; other servers' outlines never bleed in here)
     float minX, maxX, minY, maxY;
-    smp.getBounds(minX, maxX, minY, maxY);
+    smp.getBounds(currentAddr, minX, maxX, minY, maxY);
+    const std::vector<ServerMapPreview::Quad>& quads = smp.getQuads(currentAddr);
+    if (quads.empty())
+        return; // this server has no outline (yet) and no status text
     const float worldW = (maxX - minX) > 1.0f ? (maxX - minX) : 1.0f;
     const float worldH = (maxY - minY) > 1.0f ? (maxY - minY) : 1.0f;
     const float pad = 0.06f;
-    const float scale = ((w * (1.0f - 2.0f * pad)) / worldW < (h * (1.0f - 2.0f * pad)) / worldH)
-                        ? (w * (1.0f - 2.0f * pad)) / worldW
+    // width target: 90% of the panel width; height still padded to fit
+    const float widthFrac = 0.90f;
+    const float scale = (widthFrac * w / worldW < (h * (1.0f - 2.0f * pad)) / worldH)
+                        ? widthFrac * w / worldW
                         : (h * (1.0f - 2.0f * pad)) / worldH;
     const float cx = x + w * 0.5f;
     const float cy = y + h * 0.5f;
@@ -96,26 +101,13 @@ void HUDuiMapPreview::doRender()
     const float midX = 0.5f * (minX + maxX);
     const float midY = 0.5f * (minY + maxY);
 
-    // dim panel backdrop so the outline reads over the menu background
+    // line-loop state the outline needs (no backdrop anymore)
     OpenGLGState::resetState();
     glDisable(GL_TEXTURE_2D);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.0f, 0.0f, 0.0f, 0.35f);
-    {
-        static GLBatch batch;
-        batch.begin(GL_TRIANGLE_FAN);
-        batch.vertex2f(x, y);
-        batch.vertex2f(x + w, y);
-        batch.vertex2f(x + w, y + h);
-        batch.vertex2f(x, y + h);
-        batch.end();
-    }
 
     glLineWidth(1.0f);
     {
         static GLBatch batch;
-        const std::vector<ServerMapPreview::Quad>& quads = smp.getQuads();
         // one batch per quad would be slow; batch all same-color quads
         // as line loops one after another (batch flushes at end())
         for (size_t i = 0; i < quads.size(); i++)
