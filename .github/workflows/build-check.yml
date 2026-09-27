@@ -88,7 +88,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           # refresh the package DB: the cached base image can lag behind
-          # the repo (mingw-w64-x86_64-libgnurx vanished once mid-rollout)
+          # the repo
           update: true
           install: >-
             base-devel
@@ -103,9 +103,19 @@ jobs:
             mingw-w64-x86_64-freeglut
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-c-ares
-            mingw-w64-x86_64-libgnurx
             mingw-w64-x86_64-curl
             mingw-w64-x86_64-nsis
+
+      - name: Install libgnurx from repo archive
+        # libgnurx was dropped from the mingw64 pacman DB (configure.ac
+        # needs a regcomp provider when libc lacks one); the package file
+        # is still served from the archive, so install it manually
+        shell: msys2 {0}
+        run: |
+          set -e
+          curl -fsSL -o /tmp/libgnurx.pkg.tar.zst \
+            https://repo.msys2.org/mingw/mingw64/libgnurx-2.5.1-3-any.pkg.tar.zst
+          tar -xJf /tmp/libgnurx.pkg.tar.zst -C / 
 
       - name: Configure and build
         run: |
