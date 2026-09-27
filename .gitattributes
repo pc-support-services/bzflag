@@ -1,0 +1,5 @@
+# Disable git EOL conversion on checkout so generated autotools input
+# (configure.ac, m4/, Makefile.am) stays LF on every platform, including
+# windows-latest runners where core.autocrlf would otherwise produce CRLF
+# working-tree files and CRs leak into the generated configure script.
+* -text

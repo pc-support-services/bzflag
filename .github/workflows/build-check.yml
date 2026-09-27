@@ -27,6 +27,45 @@ jobs:
           ./configure
           make -j2
 
+      - name: Stage install tree
+        run: |
+          make install DESTDIR="$PWD/pkg"
+
+      - name: Assemble BZFlag.app
+        run: |
+          set -eux
+          APP="$PWD/dist/BZFlag.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
+          cp pkg/usr/local/bin/bzflag "$APP/Contents/MacOS/bzflag"
+          cp -R pkg/usr/local/share/bzflag "$APP/Contents/Resources/bzflag"
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>BZFlag</string>
+            <key>CFBundleExecutable</key><string>bzflag</string>
+            <key>CFBundleIdentifier</key><string>org.bzflag.bzflag</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleVersion</key><string>2.4</string>
+            <key>CFBundleShortVersionString</key><string>2.4</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          codesign --force --deep --sign - "$APP" || true
+
+      - name: Build DMG
+        run: |
+          hdiutil create -volname BZFlag -srcfolder "$PWD/dist/BZFlag.app" -ov -format UDZO bzflag-macos.dmg
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: bzflag-macos-dmg
+          path: bzflag-macos.dmg
+
   windows:
     runs-on: windows-latest
     continue-on-error: false
@@ -36,6 +75,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Force LF checkout
+        shell: bash
+        run: |
+          git config core.autocrlf false
+          git rm -r -q --cached .
+          git reset --hard
 
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
@@ -47,6 +93,7 @@ jobs:
             automake
             libtool
             pkg-config
+            zip
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-glew
@@ -55,12 +102,55 @@ jobs:
             mingw-w64-x86_64-c-ares
             mingw-w64-x86_64-libgnurx
             mingw-w64-x86_64-curl
+            mingw-w64-x86_64-nsis
 
-      - name: Configure and build (autotools, best-effort)
+      - name: Configure and build
         run: |
           ln -sf /mingw64/lib/libgnurx.a /mingw64/lib/libregex.a
           export LIBS="-lregex"
-          export AUTOCONF_VERSION=2.71
           ./autogen.sh
           ./configure
           make -j2
+
+      - name: Collect binaries and DLLs
+        run: |
+          set -eux
+          mkdir -p pkg/bin
+          for exe in src/bzflag/bzflag.exe src/bzfs/bzfs.exe src/bzadmin/bzadmin.exe; do
+            cp "$exe" pkg/bin/
+            ldd "$exe" | awk '$3 ~ /^\/mingw64\// {print $3}' | sort -u | while read -r dll; do
+              cp -n "$dll" pkg/bin/
+            done
+          done
+          mkdir -p pkg/share/bzflag
+          cp -R data pkg/share/bzflag/ 2>/dev/null || true
+          find pkg -type d -name '.deps' -exec rm -rf {} + || true
+
+      - name: Zip portable package
+        run: |
+          (cd pkg && zip -qr ../bzflag-windows-x64.zip .)
+
+      - name: Build NSIS installer
+        continue-on-error: true
+        run: |
+          cat > bzflag.nsi <<'NSI'
+          Name "BZFlag"
+          OutFile "bzflag-windows-x64-setup.exe"
+          InstallDir "$PROGRAMFILES64\BZFlag"
+          Page directory
+          Page instfiles
+          Section
+            SetOutPath "$INSTDIR"
+            File /r pkg\*.*
+          SectionEnd
+          NSI
+          makensis bzflag.nsi
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bzflag-windows-exe
+          path: |
+            bzflag-windows-x64.zip
+            bzflag-windows-x64-setup.exe
+          if-no-files-found: error
