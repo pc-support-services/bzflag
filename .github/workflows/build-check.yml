@@ -115,7 +115,9 @@ jobs:
           set -e
           curl -fsSL -o /tmp/libgnurx.pkg.tar.zst \
             https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-libgnurx-2.5.1-3-any.pkg.tar.zst
-          tar -xJf /tmp/libgnurx.pkg.tar.zst -C /
+          # msys2's tar cannot autodetect zstd here; decompress explicitly
+          zstd -d -f -o /tmp/libgnurx.pkg.tar /tmp/libgnurx.pkg.tar.zst
+          tar -xf /tmp/libgnurx.pkg.tar -C /
 
       - name: Configure and build
         run: |
