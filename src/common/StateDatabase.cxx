@@ -23,6 +23,9 @@
 #include <string>
 #include <string.h>
 
+#include <stdint.h>
+#include <stdio.h>
+
 // local implementation headers
 #include "ErrorHandler.h"
 #include "TextUtils.h"
@@ -288,7 +291,7 @@ void            StateDatabase::setPointer(const std::string& name,
 {
     char address[32];
     memset(address, 0, 32);
-    snprintf(address, 32, "%lu", (unsigned long)value);
+    snprintf(address, 32, "%llu", (unsigned long long)(uintptr_t)value);
     std::string ssaddress = address;
     this->set(name, ssaddress, access);
 }
