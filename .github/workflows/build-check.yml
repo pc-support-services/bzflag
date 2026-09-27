@@ -5,6 +5,7 @@ name: build-check
 on:
   push:
     branches: [2.4]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
