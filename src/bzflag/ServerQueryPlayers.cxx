@@ -53,23 +53,9 @@
 #include <map>
 
 #ifdef _WIN32
-/* minimal poll(2)-style helpers over WSAPoll (Vista+) */
-struct pollfd
-{
-    SOCKET	fd;
-    short	events;
-    short	revents;
-};
-
-#  define POLLIN	WSAPOLLIN
-#  define POLLOUT	WSAPOLLOUT
-
-inline int poll(struct pollfd* fds, unsigned long nfds, int timeout)
-{
-    return WSAPoll(reinterpret_cast<WSAPOLLFD*>(fds), nfds, timeout);
-}
-
-/* fcntl(fd, F_SETFL, flags | O_NONBLOCK) equivalent */
+/* poll(2)-style probing over WSAPoll; pollfd/POLLIN/POLLOUT come from
+ * winsock2.h (pulled in via network.h).  fcntl(O_NONBLOCK) has no
+ * equivalent: use ioctlsocket(FIONBIO) directly. */
 #  define O_NONBLOCK	1
 inline int fcntl(int fd, int cmd, ...)
 {
@@ -244,8 +230,8 @@ void ServerQueryPlayers::pump()
         if (pr == 0)
             return; // still connecting; try again next frame
         int err = 0;
-        socklen_t errLen = sizeof(err);
-        getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errLen);
+        AddrLen errLen = sizeof(err);
+        getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&err), &errLen);
         if (err != 0 || pr < 0)
         {
             finish();
