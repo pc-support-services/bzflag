@@ -87,7 +87,9 @@ jobs:
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          update: false
+          # refresh the package DB: the cached base image can lag behind
+          # the repo (mingw-w64-x86_64-libgnurx vanished once mid-rollout)
+          update: true
           install: >-
             base-devel
             autoconf
