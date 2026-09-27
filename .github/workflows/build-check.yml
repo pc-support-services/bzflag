@@ -60,6 +60,7 @@ jobs:
         run: |
           ln -sf /mingw64/lib/libgnurx.a /mingw64/lib/libregex.a
           export LIBS="-lregex"
+          export AUTOCONF_VERSION=2.71
           ./autogen.sh
           ./configure
           make -j2
