@@ -559,7 +559,7 @@ case $host_os in
     *)
         AC_CHECK_HEADER([GL/gl.h], AC_SEARCH_LIBS(glBegin, [opengl32 GL GL2], [test $ac_cv_search_glBegin = "none required" || GLIBS="$ac_cv_search_glBegin $GLIBS"], [have_gl=no]), [have_gl=no ; ac_cv_search_glBegin=no])
         AC_CHECK_HEADER([GL/glu.h], AC_SEARCH_LIBS(gluScaleImage, [glu32 GL GLU], [test $ac_cv_search_gluScaleImage = "none required" || GLIBS="$ac_cv_search_gluScaleImage $GLIBS"], [have_gl=no]), [have_gl=no ; ac_cv_search_gluScaleImage=no])
-        AC_CHECK_HEADER([GL/glew.h], AC_SEARCH_LIBS(glewInit, [GLEW], [test $ac_cv_search_glewInit = "none required" || GLIBS="$ac_cv_search_glewInit $GLIBS"], [have_gl=no]), [have_gl=no ; ac_cv_search_glewInit=no])
+        AC_CHECK_HEADER([GL/glew.h], AC_SEARCH_LIBS(glewInit, [GLEW glew32], [test $ac_cv_search_glewInit = "none required" || GLIBS="$ac_cv_search_glewInit $GLIBS"], [have_gl=no]), [have_gl=no ; ac_cv_search_glewInit=no])
         ;;
 esac
 
