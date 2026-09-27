@@ -114,8 +114,8 @@ jobs:
         run: |
           set -e
           curl -fsSL -o /tmp/libgnurx.pkg.tar.zst \
-            https://repo.msys2.org/mingw/mingw64/libgnurx-2.5.1-3-any.pkg.tar.zst
-          tar -xJf /tmp/libgnurx.pkg.tar.zst -C / 
+            https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-libgnurx-2.5.1-3-any.pkg.tar.zst
+          tar -xJf /tmp/libgnurx.pkg.tar.zst -C /
 
       - name: Configure and build
         run: |
