@@ -17,6 +17,9 @@
 #include <time.h>
 #include <string>
 #include <string.h>
+#ifdef _WIN32
+#  include <winsock2.h>
+#endif
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #endif

@@ -58,6 +58,7 @@ jobs:
 
       - name: Build DMG
         run: |
+          hdiutil detach "/Volumes/BZFlag" -force || true
           hdiutil create -volname BZFlag -srcfolder "$PWD/dist/BZFlag.app" -ov -format UDZO bzflag-macos.dmg
 
       - name: Upload macOS DMG
