@@ -1,0 +1,141 @@
+# Build RPM packages for Fedora/RHEL-style distributions.
+# deb packages are built by build-deb.yml — do not duplicate that here.
+name: build-rpm
+
+on:
+  push:
+    branches: [2.4]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-rpm:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+          - runner: ubuntu-24.04
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            autoconf automake libtool autotools-dev \
+            g++ make \
+            libc-ares-dev libcurl4-openssl-dev \
+            libsdl2-dev libglew-dev libglu1-mesa-dev libgl1-mesa-dev \
+            libncurses5-dev libasound2-dev libpulse-dev \
+            zlib1g-dev \
+            rpm
+
+      - name: Autoreconf
+        run: ./autogen.sh
+
+      - name: Configure
+        run: ./configure
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Stage install tree
+        run: |
+          make install-strip DESTDIR="$PWD/stage"
+
+      - name: Assemble payload
+        run: |
+          set -e
+          # rpm installs under /usr (not /usr/local), matching the
+          # historical bzflag.spec prefix
+          mkdir -p payload/usr
+          cp -a stage/usr/local/* payload/usr/
+          rm -f payload/usr/local 2>/dev/null || true
+
+      - name: Build rpm package
+        run: |
+          set -e
+          VERSION="2.4.31"
+          RELEASE="${GITHUB_RUN_NUMBER}"
+          ARCH="${{ matrix.arch }}"
+          TOP="$PWD/rpmbuild"
+          mkdir -p "$TOP"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+          cat > "$TOP/SPECS/bzflag.spec" <<EOF
+          Name:           bzflag
+          Version:        ${VERSION}
+          Release:        ${RELEASE}%{?dist}
+          Summary:        3D multiplayer tank battle game
+          License:        LGPL-2.1+ and MPL-2.0
+          URL:            https://www.bzflag.org/
+          BuildArch:      ${ARCH}
+          AutoReqProv:    no
+          Requires:       glibc, libstdc++, libcurl, SDL2, glew, mesa-libGLU, mesa-libGL, ncurses, alsa-lib, pulseaudio-libs, c-ares, zlib
+
+          %description
+          BZFlag is a free multiplayer 3D tank battle game. Players drive tanks
+          around a battlefield, trying to capture flags from opposing teams while
+          defending their own.
+
+          This package contains the client (bzflag), server (bzfs), and
+          console admin tool (bzadmin).
+
+          %install
+          rm -rf %{buildroot}
+          mkdir -p %{buildroot}
+
+          %files
+          %defattr(-,root,root,-)
+          %pkg_payload
+
+          %changelog
+          * Sun Sep 27 2026 PC-Support-Services <richard@localhost> - ${VERSION}-${RELEASE}
+          - Map preview: Caching status, per-server outlines, top-right layout
+          EOF
+
+          # expand the payload file list relative to the payload dir
+          (
+            cd payload
+            find usr -type f -printf '/%%p\n' | sed 's|/usr/|/usr/|' > "$TOP/SPECS/files.txt"
+            find usr -type d -printf '%%dir /%%p\n' >> "$TOP/SPECS/files.txt"
+          )
+          # replace the placeholder with the generated file list
+          awk 'BEGIN{while((getline l < "'"$TOP"'/SPECS/files.txt")>0) fl=fl l "\n"}
+               {gsub(/%pkg_payload/, fl)}1' "$TOP/SPECS/bzflag.spec" \
+            > "$TOP/SPECS/bzflag-final.spec"
+
+          rpmbuild --define "_topdir $TOP" \
+                   --define "_rpmdir $TOP/RPMS" \
+                   --define "_buildrootdir $TOP/BUILDROOT" \
+                   --buildroot "$TOP/BUILDROOT/bzflag" \
+                   -bb "$TOP/SPECS/bzflag-final.spec"
+
+          mv "$TOP/RPMS/${ARCH}/bzflag-${VERSION}-${RELEASE}.${ARCH}.rpm" \
+             "$PWD/bzflag-${VERSION}-${RELEASE}.${ARCH}.rpm" 2>/dev/null || \
+          mv "$TOP"/RPMS/*/*.rpm "$PWD/"
+
+      - name: Verify rpm
+        run: |
+          ls -la bzflag_*.rpm bzflag-*.rpm 2>/dev/null || ls -la *.rpm
+          rpm -qpi *.rpm | head -15
+
+      - name: Upload rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bzflag-rpm-${{ matrix.arch }}
+          path: '*.rpm'
+          if-no-files-found: error
+
+      - name: Attach to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.rpm'
+          generate_release_notes: true
