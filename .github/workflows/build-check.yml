@@ -110,6 +110,23 @@ jobs:
           ln -sf /mingw64/lib/libgnurx.a /mingw64/lib/libregex.a
           export LIBS="-lregex"
           export CXXFLAGS="-fpermissive"
+          # forced-include shim: F_GETFL/F_SETFL used before their defines in
+          # _WIN32 blocks of ServerQueryPlayers/ServerMapPreview; poll() lacks a
+          # lowercase name on mingw (ws2tcpip.h gives struct pollfd + WSAPoll).
+          cat > /tmp/bzwinshim.h <<'EOF'
+          #ifdef _WIN32
+          #  ifndef F_GETFL
+          #    define F_GETFL 0
+          #  endif
+          #  ifndef F_SETFL
+          #    define F_SETFL 4
+          #  endif
+          #  ifndef poll
+          #    define poll WSAPoll
+          #  endif
+          #endif
+          EOF
+          export CXXFLAGS="-fpermissive -include /tmp/bzwinshim.h"
           # posix net-header shims for mingw (winsock2 backend); CPATH wins over system dirs
           mkdir -p /tmp/bzinc/sys /tmp/bzinc/netinet /tmp/bzinc/arpa
           cat > /tmp/bzinc/sys/socket.h <<'EOF'
