@@ -720,7 +720,11 @@ case $host_os in
      mingw32*)
 	AC_DEFINE(HALF_RATE_AUDIO, 1, [Half rate Audio])
 	FLAGS="-Wall -W"
-	FLAGS="$FLAGS -mtune=$host_cpu"
+	dnl gcc rejects 'x86_64' as a -mtune value; the spelling is 'x86-64'
+	case $host_cpu in
+	  x86_64) FLAGS="$FLAGS -mtune=x86-64";;
+	  *)      FLAGS="$FLAGS -mtune=$host_cpu";;
+	esac
 	CONF_CFLAGS="$CONF_CFLAGS $FLAGS";
 	CONF_CXXFLAGS="$CONF_CXXFLAGS $FLAGS";
 	CONF_CXXFLAGS="$CONF_CXXFLAGS -fsigned-char";;
