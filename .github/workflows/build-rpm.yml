@@ -87,10 +87,6 @@ jobs:
           This package contains the client (bzflag), server (bzfs), and
           console admin tool (bzadmin).
 
-          %install
-          rm -rf %{buildroot}
-          mkdir -p %{buildroot}
-
           %files
           %defattr(-,root,root,-)
           %pkg_payload
@@ -116,13 +112,12 @@ jobs:
                {gsub(/%pkg_payload/, fl)}1' "$TOP/SPECS/bzflag.spec" \
             > "$TOP/SPECS/bzflag-final.spec"
 
-          # spec has no %build/%prep work to redo; the %install section
-          # wipes buildroot, so drop it -- payload is already in place
+          # spec has no prep/build/install sections -- the payload is
+          # already staged in the buildroot above; %files only packages it
           rpmbuild --define "_topdir $TOP" \
                    --define "_rpmdir $TOP/RPMS" \
                    --define "_buildrootdir $TOP/BUILDROOT" \
                    --buildroot "$TOP/BUILDROOT/bzflag" \
-                   --noprep --nobuild \
                    -bb "$TOP/SPECS/bzflag-final.spec"
 
           mv "$TOP/RPMS/${ARCH}/bzflag-${VERSION}-${RELEASE}.${ARCH}.rpm" \
