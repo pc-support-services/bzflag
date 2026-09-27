@@ -127,7 +127,9 @@ jobs:
 
           mv "$TOP/RPMS/${ARCH}/bzflag-${VERSION}-${RELEASE}.${ARCH}.rpm" \
              "$PWD/bzflag-${VERSION}-${RELEASE}.${ARCH}.rpm" 2>/dev/null || \
-          mv "$TOP"/RPMS/*/*.rpm "$PWD/"
+          mv "$TOP"/RPMS/*/*.rpm "$PWD/" 2>/dev/null || \
+          find "$TOP/RPMS" -name '*.rpm' -exec mv {} "$PWD/" \;
+          ls -la "$PWD"/*.rpm
 
       - name: Verify rpm
         run: |
