@@ -110,7 +110,7 @@ jobs:
           ln -sf /mingw64/lib/libgnurx.a /mingw64/lib/libregex.a
           export LIBS="-lregex"
           ./autogen.sh
-          ./configure
+          ./configure --disable-plugins
           make -j2
 
       - name: Collect binaries and DLLs
