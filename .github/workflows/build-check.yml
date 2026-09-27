@@ -21,6 +21,8 @@ jobs:
 
       - name: Configure and build
         run: |
+          export CPPFLAGS="-I$(brew --prefix)/include -I$(brew --prefix c-ares)/include"
+          export LDFLAGS="-L$(brew --prefix)/lib -L$(brew --prefix c-ares)/lib"
           ./autogen.sh
           ./configure
           make -j2
@@ -51,10 +53,12 @@ jobs:
             mingw-w64-x86_64-freeglut
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-c-ares
+            mingw-w64-x86_64-libgnurx
             mingw-w64-x86_64-curl
 
       - name: Configure and build (autotools, best-effort)
         run: |
+          ln -sf /mingw64/lib/libgnurx.a /mingw64/lib/libregex.a
           ./autogen.sh
           ./configure
           make -j2
