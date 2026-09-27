@@ -228,6 +228,6 @@ LDADD =	\
 # This is required to hook in ogg/vorbis libraries
 #	$(ALIBS)
 
-bzflag.res: $(top_srcdir)/win32/bzflag.rc $(top_srcdir)/win32/bzflag.ico
-	$(WINDRES) --include-dir=$(top_srcdir)/win32/ -i $(top_srcdir)/win32/bzflag.rc -o bzflag.res \
+bzflag.res: $(top_srcdir)/src/bzflag/bzflag.rc $(top_srcdir)/src/bzflag/bzflag.ico
+	$(WINDRES) --include-dir=$(top_srcdir)/src/bzflag/ -i $(top_srcdir)/src/bzflag/bzflag.rc -o bzflag.res \
 	-O coff
