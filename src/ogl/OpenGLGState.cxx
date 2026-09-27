@@ -16,7 +16,8 @@
 #include "OpenGLGState.h"
 
 /* system headers */
-#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 #include <string.h>
 #include <sstream>
 #include <assert.h>
@@ -1225,7 +1226,7 @@ void OpenGLGState::initStipple(void*)
     for (int i = 0; i < NumStipples; i++)
     {
         GLubyte stipple[132];
-        GLubyte* sPtr = (GLubyte*)(((unsigned long)stipple & ~3) + 4);
+        GLubyte* sPtr = (GLubyte*)(((uintptr_t)stipple & ~3) + 4);
         GLushort lineStipple;
         for (int j = 0; j < 128; j += 16)
         {

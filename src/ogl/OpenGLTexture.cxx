@@ -12,7 +12,9 @@
 
 #include "common.h"
 
-// system headers
+/* system headers */
+#include <stdint.h>
+#include <stdio.h>
 #include <string>
 #include <string.h>
 
@@ -206,14 +208,14 @@ void OpenGLTexture::setupImage(const GLubyte* pixels)
 
     // copy the data into a 4-byte aligned buffer
     GLubyte* unaligned = new GLubyte[4 * width * height + 4];
-    GLubyte* aligned = (GLubyte*)(((unsigned long)unaligned & ~3) + 4);
+    GLubyte* aligned = (GLubyte*)(((uintptr_t)unaligned & ~3) + 4);
     ::memcpy(aligned, pixels, 4 * width * height);
 
     // scale the image if required
     if ((scaledWidth != width) || (scaledHeight != height))
     {
         GLubyte* unalignedScaled = new GLubyte[4 * scaledWidth * scaledHeight + 4];
-        GLubyte* alignedScaled = (GLubyte*)(((unsigned long)unalignedScaled & ~3) + 4);
+        GLubyte* alignedScaled = (GLubyte*)(((uintptr_t)unalignedScaled & ~3) + 4);
 
         // FIXME: 0 is success, return false otherwise...
         gluScaleImage (GL_RGBA, width, height, GL_UNSIGNED_BYTE, aligned,
