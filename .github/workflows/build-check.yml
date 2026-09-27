@@ -110,23 +110,76 @@ jobs:
           ln -sf /mingw64/lib/libgnurx.a /mingw64/lib/libregex.a
           export LIBS="-lregex"
           export CXXFLAGS="-fpermissive"
+          # posix net-header shims for mingw (winsock2 backend); CPATH wins over system dirs
+          mkdir -p /tmp/bzinc/sys /tmp/bzinc/netinet /tmp/bzinc/arpa
+          cat > /tmp/bzinc/sys/socket.h <<'EOF'
+          #ifndef BZ_SHIM_SYS_SOCKET_H
+          #define BZ_SHIM_SYS_SOCKET_H
+          #include <winsock2.h>
+          #include <ws2tcpip.h>
+          #endif
+          EOF
+          cat > /tmp/bzinc/netinet/in.h <<'EOF'
+          #ifndef BZ_SHIM_NETINET_IN_H
+          #define BZ_SHIM_NETINET_IN_H
+          #include <winsock2.h>
+          #include <ws2tcpip.h>
+          #endif
+          EOF
+          cat > /tmp/bzinc/arpa/inet.h <<'EOF'
+          #ifndef BZ_SHIM_ARPA_INET_H
+          #define BZ_SHIM_ARPA_INET_H
+          #include <winsock2.h>
+          #endif
+          EOF
+          cat > /tmp/bzinc/netdb.h <<'EOF'
+          #ifndef BZ_SHIM_NETDB_H
+          #define BZ_SHIM_NETDB_H
+          #include <winsock2.h>
+          #endif
+          EOF
+          cat > /tmp/bzinc/poll.h <<'EOF'
+          #ifndef BZ_SHIM_POLL_H
+          #define BZ_SHIM_POLL_H
+          #include <winsock2.h>
+          struct pollfd { SOCKET fd; short events; short revents; };
+          #ifndef POLLWRNORM
+          #define POLLWRNORM 0x0010
+          #endif
+          #ifndef POLLRDNORM
+          #define POLLRDNORM 0x0100
+          #endif
+          #ifndef POLLOUT
+          #define POLLOUT POLLWRNORM
+          #endif
+          #ifndef POLLIN
+          #define POLLIN POLLRDNORM
+          #endif
+          static inline int poll(struct pollfd* f, unsigned long n, int t)
+          {
+              return WSAPoll(f, n, t);
+          }
+          #endif
+          EOF
+          export CPATH="/tmp/bzinc${CPATH:+:$CPATH}"
           ./autogen.sh
           ./configure --disable-plugins
           make -j2
 
       - name: Collect binaries and DLLs
         run: |
-          set -eux
-          mkdir -p pkg/bin
+          set -ux
+          mkdir -p pkg/bin pkg/share/bzflag
           for exe in src/bzflag/bzflag.exe src/bzfs/bzfs.exe src/bzadmin/bzadmin.exe; do
+            [ -f "$exe" ] || { echo "SKIP missing $exe"; continue; }
             cp "$exe" pkg/bin/
             ldd "$exe" | awk '$3 ~ /^\/mingw64\// {print $3}' | sort -u | while read -r dll; do
               cp -n "$dll" pkg/bin/
             done
           done
-          mkdir -p pkg/share/bzflag
           cp -R data pkg/share/bzflag/ 2>/dev/null || true
           find pkg -type d -name '.deps' -exec rm -rf {} + || true
+          ls -la pkg/bin
 
       - name: Zip portable package
         run: |

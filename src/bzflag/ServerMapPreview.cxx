@@ -51,6 +51,8 @@
 #include "StateDatabase.h"
 
 // system implementation headers
+#include "network.h"
+#ifndef _WIN32
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -59,6 +61,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+#endif
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -66,6 +69,40 @@
 #include <math.h>
 #include <vector>
 #include <map>
+
+#ifdef _WIN32
+/* minimal poll(2)-style helpers over WSAPoll (Vista+) */
+struct pollfd
+{
+    SOCKET	fd;
+    short	events;
+    short	revents;
+};
+
+#  define POLLIN	WSAPOLLIN
+#  define POLLOUT	WSAPOLLOUT
+
+inline int poll(struct pollfd* fds, unsigned long nfds, int timeout)
+{
+    return WSAPoll(reinterpret_cast<WSAPOLLFD*>(fds), nfds, timeout);
+}
+
+/* fcntl(fd, F_SETFL, flags | O_NONBLOCK) equivalent */
+#  define O_NONBLOCK	1
+inline int fcntl(int fd, int cmd, ...)
+{
+    if (cmd == F_GETFL)
+	return 0;
+    if (cmd == F_SETFL)
+    {
+	u_long mode = 1; /* the only flag used is O_NONBLOCK */
+	return ioctlsocket(fd, FIONBIO, &mode);
+    }
+    return -1;
+}
+#  define F_GETFL	0
+#  define F_SETFL	4
+#endif
 
 // minimum seconds between any two fetches for the same/another server
 static const float MinRetryDelay = 2.0f;
