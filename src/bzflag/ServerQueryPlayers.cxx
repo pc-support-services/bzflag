@@ -54,13 +54,22 @@
 
 #ifdef _WIN32
 /* poll(2)-style probing over WSAPoll; pollfd/POLLIN/POLLOUT come from
- * winsock2.h (pulled in via network.h).  fcntl(O_NONBLOCK) has no
- * equivalent: use ioctlsocket(FIONBIO) directly. */
+ * winsock2.h/ws2tcpip.h (pulled in via network.h).  fcntl(O_NONBLOCK)
+ * has no equivalent: use ioctlsocket(FIONBIO) directly.  The F_* flags
+ * must be defined before this shim body references them. */
 #  define O_NONBLOCK	1
+#  define F_GETFL	0
+#  define F_SETFL	4
+#  ifndef poll
+inline int poll(struct pollfd* fds, unsigned long nfds, int timeout)
+{
+    return WSAPoll(fds, nfds, timeout);
+}
+#  endif
 inline int fcntl(int fd, int cmd, ...)
 {
     if (cmd == F_GETFL)
-	return 0;
+	return 0; /* flags not introspectable on winsock; only flag used is O_NONBLOCK */
     if (cmd == F_SETFL)
     {
 	u_long mode = 1; /* the only flag used is O_NONBLOCK */
@@ -68,8 +77,6 @@ inline int fcntl(int fd, int cmd, ...)
     }
     return -1;
 }
-#  define F_GETFL	0
-#  define F_SETFL	4
 #endif
 
 
