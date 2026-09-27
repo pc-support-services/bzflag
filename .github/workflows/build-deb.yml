@@ -10,7 +10,14 @@ on:
 
 jobs:
   build-deb:
-    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+          - runner: ubuntu-24.04
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
 
@@ -55,7 +62,7 @@ jobs:
           cat > "$PKGDIR/DEBIAN/control" << EOF
           Package: bzflag
           Version: ${VERSION}
-          Architecture: arm64
+          Architecture: ${{ matrix.arch }}
           Maintainer: ${GITHUB_ACTOR} <${GITHUB_ACTOR}@users.noreply.github.com>
           Depends: libc6, libstdc++6, libcurl4, libsdl2-2.0-0, libglew2.2, libglu1-mesa | libglu1, libgl1, libncurses6, libasound2, libpulse0, libcares2, zlib1g
           Section: games
@@ -91,7 +98,7 @@ jobs:
             | xargs -0 md5sum > DEBIAN/md5sums )
 
           fakeroot dpkg-deb --build --root-owner-group "$PKGDIR" \
-            "$PWD/bzflag_${VERSION}_arm64.deb"
+            "$PWD/bzflag_${VERSION}_${{ matrix.arch }}.deb"
 
       - name: Verify deb
         run: |
@@ -101,7 +108,7 @@ jobs:
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bzflag-deb-arm64
+          name: bzflag-deb-${{ matrix.arch }}
           path: bzflag_*.deb
           if-no-files-found: error
 
@@ -109,5 +116,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: bzflag_*.deb
+          files: bzflag_*_*.deb
           generate_release_notes: true
