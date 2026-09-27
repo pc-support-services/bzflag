@@ -57,9 +57,9 @@
  * winsock2.h/ws2tcpip.h (pulled in via network.h).  fcntl(O_NONBLOCK)
  * has no equivalent: use ioctlsocket(FIONBIO) directly.  The F_* flags
  * must be defined before this shim body references them. */
-#  define O_NONBLOCK	1
-#  define F_GETFL	0
-#  define F_SETFL	4
+#  define O_NONBLOCK    1
+#  define F_GETFL   0
+#  define F_SETFL   4
 #  ifndef poll
 inline int poll(struct pollfd* fds, unsigned long nfds, int timeout)
 {
@@ -69,11 +69,11 @@ inline int poll(struct pollfd* fds, unsigned long nfds, int timeout)
 inline int fcntl(int fd, int cmd, ...)
 {
     if (cmd == F_GETFL)
-	return 0; /* flags not introspectable on winsock; only flag used is O_NONBLOCK */
+        return 0; /* flags not introspectable on winsock; only flag used is O_NONBLOCK */
     if (cmd == F_SETFL)
     {
-	u_long mode = 1; /* the only flag used is O_NONBLOCK */
-	return ioctlsocket(fd, FIONBIO, &mode);
+        u_long mode = 1; /* the only flag used is O_NONBLOCK */
+        return ioctlsocket(fd, FIONBIO, &mode);
     }
     return -1;
 }
