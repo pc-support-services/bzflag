@@ -66,6 +66,13 @@ jobs:
         with:
           name: bzflag-macos-dmg
           path: bzflag-macos.dmg
+          if-no-files-found: error
+
+      - name: Attach DMG to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: bzflag-macos.dmg
 
   windows:
     runs-on: windows-latest
@@ -240,3 +247,11 @@ jobs:
             bzflag-windows-x64.zip
             bzflag-windows-x64-setup.exe
           if-no-files-found: error
+
+      - name: Attach Windows packages to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bzflag-windows-x64.zip
+            bzflag-windows-x64-setup.exe
