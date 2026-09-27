@@ -553,7 +553,7 @@ case $host_os in
     darwin*)
         AC_CHECK_HEADER([OpenGL/gl.h], [ac_cv_search_glBegin="none required"], [have_gl=no ; ac_cv_search_glBegin=no])
         AC_CHECK_HEADER([OpenGL/glu.h], [ac_cv_search_gluScaleImage="none required"], [have_gl=no ; ac_cv_search_gluScaleImage=no])
-        AC_CHECK_HEADER([GL/glew.h], AC_SEARCH_LIBS(glewInit, [GLEW], [test $ac_cv_search_glewInit = "none required" || GLIBS="$ac_cv_search_glewInit $GLIBS"], [have_gl=no], $GLIBS), [have_gl=no ; ac_cv_search_glewInit=no])
+        AC_CHECK_HEADER([GL/glew.h], AC_SEARCH_LIBS(glewInit, [GLEW glew32], [test $ac_cv_search_glewInit = "none required" || GLIBS="$ac_cv_search_glewInit $GLIBS"], [have_gl=no], $GLIBS), [have_gl=no ; ac_cv_search_glewInit=no])
 
         ;;
     *)
