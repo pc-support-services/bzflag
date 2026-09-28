@@ -15,6 +15,7 @@
 
 // system headers
 #include <string.h>
+#include <stdint.h> // for intptr_t offset casts
 
 // common headers
 #include "OpenGLMaterial.h"
@@ -32,6 +33,10 @@
 #include "SceneNode.h"
 #include "effectsRenderer.h"
 #include "GLBatch.h"
+#include "bzfio.h" // for logDebugMessage
+
+// stars table is const float [n][6]; NumStars is the count
+// (declared in stars.h)
 
 static const GLfloat    squareShape[4][2] =
 {
@@ -91,6 +96,22 @@ BackgroundRenderer::BackgroundRenderer() :
     simpleGroundList[1] = INVALID_GL_LIST_ID;
     simpleGroundList[2] = INVALID_GL_LIST_ID;
     simpleGroundList[3] = INVALID_GL_LIST_ID;
+
+    // VBO path state (legacy lists above are the A/B fallback)
+    sunVboVerts = sunVboCols = 0;
+    sunVboCount = 0;
+    moonVboVerts = moonVboCols = 0;
+    moonVboCount = 0;
+    starVboVerts = starVboCols = 0;
+    starVboCount = 0;
+    simpleGroundVbo[0] = simpleGroundVbo[1] = 0;
+    simpleGroundVboCount[0] = simpleGroundVboCount[1] = 0;
+    cloudsVboVerts = cloudsVboCols = 0;
+    cloudsVboCount = 0;
+    mountainsVboVerts = NULL;
+    mountainsVboCount = NULL;
+    moonLimbAngle = 0.0f;
+    bgVboFailed = false;
 
     // initialize global to class stuff
     if (!init)
@@ -496,6 +517,10 @@ void BackgroundRenderer::makeCelestialLists(const SceneRenderer& renderer)
     const float limbAngle = atan2f(sun2[2], sun2[1]);
 
     const int moonSegements = BZDB.evalInt("moonSegments");
+
+    // stash limb angle for the VBO draw path
+    moonLimbAngle = limbAngle;
+
     moonList = glGenLists(1);
     glNewList(moonList, GL_COMPILE);
     {
@@ -524,6 +549,68 @@ void BackgroundRenderer::makeCelestialLists(const SceneRenderer& renderer)
         glPopMatrix();
     }
     glEndList();
+
+    // moon VBO: same strip geometry, untransformed (transforms applied
+    // per-frame at the draw site)
+    if (useBgVbo())
+    {
+        if (moonVboVerts != 0)
+        {
+            bzDeleteBuffers(1, &moonVboVerts);
+            moonVboVerts = 0;
+        }
+        const int cornerCount = 1 + (moonSegements - 1) * 2 + 1;
+        std::vector<GLfloat> inter;
+        inter.reserve((size_t)cornerCount * 8);
+        // first vertex
+        inter.push_back(2.0f * worldSize);
+        inter.push_back(0.0f);
+        inter.push_back(-moonRadius);
+        inter.push_back(0.0f);
+        inter.push_back(0.0f);
+        inter.push_back(1.0f);
+        inter.push_back(0.0f);
+        inter.push_back(0.0f);
+        for (int i = 0; i < moonSegements - 1; i++)
+        {
+            const float angle = (float)(0.5 * M_PI * double(i-(moonSegements/2)-1) / (moonSegements/2.0));
+            const float sinAngle = sinf(angle);
+            const float cosAngle = cosf(angle);
+            // shadowed edge vertex
+            inter.push_back(2.0f * worldSize);
+            inter.push_back(coverage * moonRadius * cosAngle);
+            inter.push_back(moonRadius * sinAngle);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            // lit edge vertex
+            inter.push_back(2.0f * worldSize);
+            inter.push_back(moonRadius * cosAngle);
+            inter.push_back(moonRadius * sinAngle);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+        }
+        // last vertex
+        inter.push_back(2.0f * worldSize);
+        inter.push_back(0.0f);
+        inter.push_back(moonRadius);
+        inter.push_back(0.0f);
+        inter.push_back(0.0f);
+        inter.push_back(1.0f);
+        inter.push_back(0.0f);
+        inter.push_back(0.0f);
+        moonVboCount = (int)inter.size() / 8;
+        bzGenBuffers(1, &moonVboVerts);
+        glBindBuffer(GL_ARRAY_BUFFER, moonVboVerts);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 
     // make pretransformed display list for stars
     starXFormList = glGenLists(1);
@@ -702,7 +789,17 @@ void BackgroundRenderer::renderGroundEffects(SceneRenderer& renderer,
                 glMatrixMode(GL_TEXTURE);
                 glPushMatrix();
                 glTranslatef(cloudDriftU, cloudDriftV, 0.0f);
-                glCallList(cloudsList);
+                if (useBgVbo() && (cloudsVboVerts != 0) && (cloudsVboCount > 0))
+                {
+                    // same two strips the cloudsList baked: inner (4
+                    // corners) then outer fade ring (10 corners)
+                    drawBgVbo(cloudsVboVerts, cloudsVboCols, GL_TRIANGLE_STRIP,
+                              cloudsVboCount, 0, true, false);
+                    drawBgVbo(cloudsVboVerts, cloudsVboCols, GL_TRIANGLE_STRIP,
+                              cloudsVboCount - 4, 4, true, false);
+                }
+                else
+                    glCallList(cloudsList);
                 glLoadIdentity();   // maybe works around bug in some systems
                 glPopMatrix();
                 glMatrixMode(GL_MODELVIEW);
@@ -1081,13 +1178,36 @@ void BackgroundRenderer::drawSky(SceneRenderer& renderer, bool mirror)
         {
             sunGState.setState();
             glColor3fv(renderer.getSunScaledColor());
-            glCallList(sunXFormList);
+            if (useBgVbo() && (sunVboVerts != 0))
+            {
+                // same transform the sunXFormList baked: rotate into
+                // the sun direction, then draw the static fan
+                glPushMatrix();
+                glRotatef((GLfloat)(atan2f(sunDirection[1], (sunDirection[0])) * 180.0 / M_PI),
+                          0.0f, 0.0f, 1.0f);
+                glRotatef((GLfloat)(asinf(sunDirection[2]) * 180.0 / M_PI), 0.0f, -1.0f, 0.0f);
+                drawBgVbo(sunVboVerts, 0, GL_TRIANGLE_FAN, sunVboCount);
+                glPopMatrix();
+            }
+            else
+                glCallList(sunXFormList);
         }
 
         if (doStars)
         {
             starGState[starGStateIndex].setState();
-            glCallList(starXFormList);
+            if (useBgVbo() && (starVboVerts != 0))
+            {
+                // same transform as starXFormList baked
+                const float starWorldSize = BZDBCache::worldSize;
+                glPushMatrix();
+                glMultMatrixf(renderer.getCelestialTransform());
+                glScalef(starWorldSize, starWorldSize, starWorldSize);
+                drawBgVbo(starVboVerts, starVboCols, GL_POINTS, starVboCount);
+                glPopMatrix();
+            }
+            else
+                glCallList(starXFormList);
         }
 
         if (moonDirection[2] > -0.009f)
@@ -1096,7 +1216,19 @@ void BackgroundRenderer::drawSky(SceneRenderer& renderer, bool mirror)
             glColor3f(1.0f, 1.0f, 1.0f);
             //   if (useMoonTexture)
             //     glEnable(GL_TEXTURE_2D);
-            glCallList(moonList);
+            if (useBgVbo() && (moonVboVerts != 0))
+            {
+                // same transforms as the moonList baked
+                glPushMatrix();
+                glRotatef((GLfloat)(atan2f(moonDirection[1], moonDirection[0]) * 180.0 / M_PI),
+                          0.0f, 0.0f, 1.0f);
+                glRotatef((GLfloat)(asinf(moonDirection[2]) * 180.0 / M_PI), 0.0f, -1.0f, 0.0f);
+                glRotatef((float)(moonLimbAngle * 180.0 / M_PI), 1.0f, 0.0f, 0.0f);
+                drawBgVbo(moonVboVerts, 0, GL_TRIANGLE_STRIP, moonVboCount);
+                glPopMatrix();
+            }
+            else
+                glCallList(moonList);
         }
 
     }
@@ -1134,6 +1266,25 @@ void BackgroundRenderer::drawGround()
 
         if (RENDERER.useQuality() >= 2)
             drawGroundCentered();
+        else if (useBgVbo())
+        {
+            // styleIndex 0/1 -> square strip VBO [0]; 2/3 -> divided-strip
+            // VBO [1] (legacy aliases: [1]==[0], [3]==[2]). The divided
+            // VBO holds 4 rows back to back: one glDrawArrays per row.
+            if ((styleIndex == 0) || (styleIndex == 1))
+                drawBgVbo(simpleGroundVbo[0], 0, GL_TRIANGLE_STRIP,
+                          simpleGroundVboCount[0], 0, false, false);
+            else if ((simpleGroundVbo[1] != 0) && (simpleGroundVboCount[1] > 0))
+            {
+                const int cornersPerRow = simpleGroundVboCount[1];
+                for (int row = 0; row < 4; row++)
+                    drawBgVbo(simpleGroundVbo[1], 0, GL_TRIANGLE_STRIP,
+                              cornersPerRow, row * cornersPerRow, true, false);
+            }
+            else
+                drawBgVbo(simpleGroundVbo[0], 0, GL_TRIANGLE_STRIP,
+                          simpleGroundVboCount[0], 0, false, false);
+        }
         else
             glCallList(simpleGroundList[styleIndex]);
     }
@@ -1653,7 +1804,20 @@ void BackgroundRenderer::drawMountains(void)
     for (int i = 0; i < numMountainTextures; i++)
     {
         mountainsGState[i].setState();
-        glCallList(mountainsList[i]);
+        const int stripCorners =
+            (mountainsVboCount != NULL) ? (mountainsVboCount[i] / 2) : 0;
+        if (useBgVbo() && (mountainsVboVerts != NULL)
+            && (mountainsVboVerts[i] != 0) && (stripCorners > 0))
+        {
+            // same two strips the legacy list bakes: 0..numFaces then
+            // M_PI..M_PI+numFaces, back to back in one VBO
+            drawBgVbo(mountainsVboVerts[i], 0, GL_TRIANGLE_STRIP,
+                      stripCorners, 0, true, true);
+            drawBgVbo(mountainsVboVerts[i], 0, GL_TRIANGLE_STRIP,
+                      stripCorners, stripCorners, true, true);
+        }
+        else
+            glCallList(mountainsList[i]);
     }
 }
 
@@ -1701,6 +1865,634 @@ void BackgroundRenderer::doFreeDisplayLists()
     }
 
     return;
+}
+
+
+bool BackgroundRenderer::useBgVbo() const
+{
+    return BZDBCache::bgVBO && !bgVboFailed;
+}
+
+
+void BackgroundRenderer::drawBgVbo(GLuint vboVerts, GLuint vboCols,
+                                   GLenum mode, int count) const
+{
+    drawBgVbo(vboVerts, vboCols, mode, count, 0, false, false);
+}
+
+
+void BackgroundRenderer::drawBgVbo(GLuint vboVerts, GLuint vboCols,
+                                   GLenum mode, int count, int first,
+                                   bool useTex, bool useNorm) const
+{
+    if ((vboVerts == 0) || (count <= 0))
+        return;
+
+    const GLint stride = 8 * sizeof(GLfloat);
+    const GLint base = first * stride;
+
+    // snapshot the client-array enable bits and restore them exactly
+    // after the draw: unused arrays MUST be disabled for the draw itself
+    // (a stale enabled pointer reads garbage), but the previous state
+    // belongs to whoever set it
+    GLboolean savedColor, savedTex, savedNorm;
+    glGetBooleanv(GL_COLOR_ARRAY, &savedColor);
+    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &savedTex);
+    glGetBooleanv(GL_NORMAL_ARRAY, &savedNorm);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboVerts);
+    glVertexPointer(3, GL_FLOAT, stride, (const GLvoid*)(intptr_t)base);
+    glEnableClientState(GL_VERTEX_ARRAY);
+
+    if (vboCols != 0)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, vboCols);
+        glColorPointer(4, GL_FLOAT, 0,
+                       (const GLvoid*)(intptr_t)(first * 4 * sizeof(GLfloat)));
+        glEnableClientState(GL_COLOR_ARRAY);
+    }
+    else
+        glDisableClientState(GL_COLOR_ARRAY);
+
+    if (useTex)
+    {
+        // texcoords live in the same interleaved buffer at offset 6
+        glBindBuffer(GL_ARRAY_BUFFER, vboVerts);
+        glTexCoordPointer(2, GL_FLOAT, stride,
+                          (const GLvoid*)(intptr_t)(base + 6 * sizeof(GLfloat)));
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
+    else
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+    if (useNorm)
+    {
+        // normals at offset 3
+        glBindBuffer(GL_ARRAY_BUFFER, vboVerts);
+        glNormalPointer(GL_FLOAT, stride,
+                        (const GLvoid*)(intptr_t)(base + 3 * sizeof(GLfloat)));
+        glEnableClientState(GL_NORMAL_ARRAY);
+    }
+    else
+        glDisableClientState(GL_NORMAL_ARRAY);
+
+    // pointer offsets already include `first` (base = first*stride), so
+    // the draw must start at 0: passing `first` here would offset twice
+    // and read past the buffer end for every non-zero-base strip
+    glDrawArrays(mode, 0, count);
+
+    // restore the enable bits and unbind: a left-bound GL_ARRAY_BUFFER
+    // poisons the GLBatch client-pointer captures exactly like the mesh
+    // path
+    if (savedColor)
+        glEnableClientState(GL_COLOR_ARRAY);
+    else
+        glDisableClientState(GL_COLOR_ARRAY);
+    if (savedTex)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    else
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    if (savedNorm)
+        glEnableClientState(GL_NORMAL_ARRAY);
+    else
+        glDisableClientState(GL_NORMAL_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    return;
+}
+
+
+void BackgroundRenderer::freeBgVBOs()
+{
+    GLuint* const all[] =
+    {
+        &sunVboVerts, &sunVboCols,
+        &moonVboVerts, &moonVboCols,
+        &starVboVerts, &starVboCols,
+        &cloudsVboVerts, &cloudsVboCols
+    };
+    const int total = bzcountof(all);
+    for (int i = 0; i < total; i++)
+    {
+        if (*all[i] != 0)
+        {
+            bzDeleteBuffers(1, all[i]);
+            *all[i] = 0;
+        }
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        if (simpleGroundVbo[i] != 0)
+        {
+            bzDeleteBuffers(1, &simpleGroundVbo[i]);
+            simpleGroundVbo[i] = 0;
+        }
+        simpleGroundVboCount[i] = 0;
+    }
+    if (mountainsVboVerts != NULL)
+    {
+        for (int i = 0; i < numMountainTextures; i++)
+        {
+            if (mountainsVboVerts[i] != 0)
+            {
+                bzDeleteBuffers(1, &mountainsVboVerts[i]);
+                mountainsVboVerts[i] = 0;
+            }
+        }
+    }
+    sunVboCount = 0;
+    moonVboCount = 0;
+    starVboCount = 0;
+    cloudsVboCount = 0;
+    bgVboFailed = false;
+    return;
+}
+
+
+void BackgroundRenderer::makeBgVBOs()
+{
+    if (sunVboVerts != 0)
+        return; // already built
+
+    // drain any pending GL errors, same discipline as makeLists()
+    GLenum error;
+    int errCount = 0;
+    while (true)
+    {
+        error = glGetError();
+        if (error == GL_NO_ERROR)
+            break;
+        errCount++;
+        if (errCount > 666)
+        {
+            logDebugMessage(1,"BackgroundRenderer::makeBgVBOs() glError: %i\n", error);
+            return;
+        }
+    }
+
+    // helper: upload one interleaved vertex VBO (8 floats/corner) and
+    // optionally a color VBO (4 floats/corner). Returns false on GL error.
+
+    const float worldSize = BZDBCache::worldSize;
+    std::vector<GLfloat> staging;
+    std::vector<GLfloat> colStaging;
+
+    //
+    // SUN: triangle fan, 1 + 21 corners (legacy sunList, GL_TRIANGLE_FAN).
+    // Display lists capture the current color at CALL time, and the call
+    // site sets glColor3fv(renderer.getSunScaledColor()) before the call,
+    // so the VBO path needs no per-vertex colors here either.
+    //
+    {
+        const float sunRadius =
+            (float)(2.0 * worldSize * atanf((float)(60.0 * M_PI / 180.0)) / 60.0);
+        staging.clear();
+        staging.reserve(3 * 22);
+        staging.push_back(2.0f * worldSize);
+        staging.push_back(0.0f);
+        staging.push_back(0.0f);
+        for (int i = 0; i <= 20; i++)
+        {
+            const float angle = (float)(2.0 * M_PI * double(i % 20) / 19.0);
+            staging.push_back(2.0f * worldSize);
+            staging.push_back(sunRadius * sinf(angle));
+            staging.push_back(sunRadius * cosf(angle));
+        }
+        sunVboCount = (int)staging.size() / 3;
+        // expand to interleaved 8-float corners (pos | zero normal | zero uv)
+        std::vector<GLfloat> inter;
+        inter.reserve(staging.size() / 3 * 8);
+        for (size_t i = 0; i < staging.size(); i += 3)
+        {
+            inter.push_back(staging[i + 0]);
+            inter.push_back(staging[i + 1]);
+            inter.push_back(staging[i + 2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+        }
+        bzGenBuffers(1, &sunVboVerts);
+        glBindBuffer(GL_ARRAY_BUFFER, sunVboVerts);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        sunVboCols = 0; // sun color comes from glColor3fv at the call site
+    }
+
+    //
+    // STARS: GL_POINTS with per-star colors (legacy starList). Stored in
+    // CELESTIAL coordinates (the raw stars[][6] table); the celestial
+    // transform + scale are applied per-frame at draw time.
+    //
+    {
+        staging.clear();
+        colStaging.clear();
+        staging.reserve((size_t)NumStars * 8);
+        colStaging.reserve((size_t)NumStars * 4);
+        for (unsigned int i = 0; i < NumStars; i++)
+        {
+            const GLfloat* s = stars[i];
+            staging.push_back(s[3]);
+            staging.push_back(s[4]);
+            staging.push_back(s[5]);
+            staging.push_back(0.0f);
+            staging.push_back(0.0f);
+            staging.push_back(1.0f);
+            staging.push_back(0.0f);
+            staging.push_back(0.0f);
+            colStaging.push_back(s[0]);
+            colStaging.push_back(s[1]);
+            colStaging.push_back(s[2]);
+            colStaging.push_back(1.0f);
+        }
+        starVboCount = (int)NumStars;
+        std::vector<GLfloat> inter;
+        inter.reserve(staging.size());
+        for (size_t i = 0; i < staging.size(); i += 3)
+        {
+            inter.push_back(staging[i + 0]);
+            inter.push_back(staging[i + 1]);
+            inter.push_back(staging[i + 2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+        }
+        bzGenBuffers(1, &starVboVerts);
+        glBindBuffer(GL_ARRAY_BUFFER, starVboVerts);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        bzGenBuffers(1, &starVboCols);
+        glBindBuffer(GL_ARRAY_BUFFER, starVboCols);
+        glBufferData(GL_ARRAY_BUFFER, colStaging.size() * sizeof(GLfloat),
+                     colStaging.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    //
+    // MOON: triangle strip rebuilt whenever setCelestial() runs (coverage
+    // and limb angle change). Built in makeCelestialLists() below.
+    //
+
+    //
+    // SIMPLE GROUND square: triangle strip, 4 corners (legacy
+    // simpleGroundList[0], used by styles 0/1 and quality<2 style 2/3).
+    //
+    {
+        const GLfloat groundSize = 10.0f * worldSize;
+        GLfloat groundPlane[4][3];
+        for (int i = 0; i < 4; i++)
+        {
+            groundPlane[i][0] = groundSize * squareShape[i][0];
+            groundPlane[i][1] = groundSize * squareShape[i][1];
+            groundPlane[i][2] = 0.0f;
+        }
+        // strip order: 0, 1, 3, 2 (matches the legacy glVertex2fv order)
+        const int order[4] = { 0, 1, 3, 2 };
+        std::vector<GLfloat> inter;
+        inter.reserve(4 * 8);
+        for (int i = 0; i < 4; i++)
+        {
+            const int k = order[i];
+            inter.push_back(groundPlane[k][0]);
+            inter.push_back(groundPlane[k][1]);
+            inter.push_back(groundPlane[k][2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+        }
+        simpleGroundVboCount[0] = 4;
+        bzGenBuffers(1, &simpleGroundVbo[0]);
+        glBindBuffer(GL_ARRAY_BUFFER, simpleGroundVbo[0]);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        //
+        // DIVIDED GROUND: 4 strips of (2 + 2*GROUND_DIVS) corners with
+        // per-corner texcoords (legacy simpleGroundList[2]). One strip
+        // per GL_TRIANGLES? No -- one GL_TRIANGLE_STRIP per row, so this
+        // geometry keeps per-row begin/end. Bake ALL rows into one strip
+        // chain is NOT valid (strips cannot be concatenated); instead
+        // store rows back to back and draw one glDrawArrays per row
+        // (4 draws, same as the legacy 4 glBegin strips).
+        //
+        // texcoords need the renderer's ground UV mapping, which is only
+        // available through SceneRenderer::getGroundUV(). The legacy list
+        // bakes those coords at build time; the VBO build runs from
+        // doInitDisplayLists() which has the renderer. See makeBgVBOs()
+        // overload below.
+        //
+    }
+
+    error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        logDebugMessage(1,"BackgroundRenderer::makeBgVBOs() upload glError: %i\n", error);
+        freeBgVBOs();
+        bgVboFailed = true;
+    }
+    else
+        logDebugMessage(3,"BackgroundRenderer::makeBgVBOs() built\n");
+
+    return;
+}
+
+
+void BackgroundRenderer::makeBgVBOs(SceneRenderer& renderer)
+{
+    // requires an already-built sun/star set (makeBgVBOs() must run first)
+    if (sunVboVerts == 0)
+        return;
+
+    const float worldSize = BZDBCache::worldSize;
+    const GLfloat groundSize = 10.0f * worldSize;
+    GLfloat groundPlane[4][3];
+    for (int i = 0; i < 4; i++)
+    {
+        groundPlane[i][0] = groundSize * squareShape[i][0];
+        groundPlane[i][1] = groundSize * squareShape[i][1];
+        groundPlane[i][2] = 0.0f;
+    }
+
+    //
+    // DIVIDED GROUND: legacy simpleGroundList[2] = 4 rows, each a
+    // GL_TRIANGLE_STRIP of (2 + 2*GROUND_DIVS) corners with per-corner
+    // texcoords. Rows are baked back to back in one VBO and drawn with
+    // one glDrawArrays per row (same strip boundaries as the legacy
+    // per-row glBegin).
+    //
+    {
+        GLfloat xmin, ymin;
+        GLfloat xdist, ydist;
+        GLfloat xtexmin, ytexmin;
+        GLfloat xtexdist, ytexdist;
+        float vec[2];
+
+#define BG_GROUND_DIVS (4)
+
+        xmin = groundPlane[2][0];
+        ymin = groundPlane[2][1];
+        xdist = (groundPlane[0][0] - xmin) / (float)BG_GROUND_DIVS;
+        ydist = (groundPlane[0][1] - ymin) / (float)BG_GROUND_DIVS;
+
+        renderer.getGroundUV(groundPlane[2], vec);
+        xtexmin = vec[0];
+        ytexmin = vec[1];
+        renderer.getGroundUV(groundPlane[0], vec);
+        xtexdist = (vec[0] - xtexmin) / (float)BG_GROUND_DIVS;
+        ytexdist = (vec[1] - ytexmin) / (float)BG_GROUND_DIVS;
+
+        const int cornersPerRow = 2 + 2 * BG_GROUND_DIVS;
+        std::vector<GLfloat> inter;
+        inter.reserve((size_t)cornersPerRow * BG_GROUND_DIVS * 8);
+        for (int row = 0; row < BG_GROUND_DIVS; row++)
+        {
+            const GLfloat yoff = ymin + ydist * (GLfloat)row;
+            const GLfloat ytexoff = ytexmin + ytexdist * (GLfloat)row;
+
+            inter.push_back(xmin);
+            inter.push_back(yoff + ydist);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(xtexmin);
+            inter.push_back(ytexoff + ytexdist);
+
+            inter.push_back(xmin);
+            inter.push_back(yoff);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(xtexmin);
+            inter.push_back(ytexoff);
+
+            for (int j = 0; j < BG_GROUND_DIVS; j++)
+            {
+                const GLfloat xoff = xmin + xdist * (GLfloat)(j + 1);
+                const GLfloat xtexoff = xtexmin + xtexdist * (GLfloat)(j + 1);
+
+                inter.push_back(xoff);
+                inter.push_back(yoff + ydist);
+                inter.push_back(0.0f);
+                inter.push_back(0.0f);
+                inter.push_back(0.0f);
+                inter.push_back(1.0f);
+                inter.push_back(xtexoff);
+                inter.push_back(ytexoff + ytexdist);
+
+                inter.push_back(xoff);
+                inter.push_back(yoff);
+                inter.push_back(0.0f);
+                inter.push_back(0.0f);
+                inter.push_back(0.0f);
+                inter.push_back(1.0f);
+                inter.push_back(xtexoff);
+                inter.push_back(ytexoff);
+            }
+        }
+        simpleGroundVboCount[1] = cornersPerRow;
+        bzGenBuffers(1, &simpleGroundVbo[1]);
+        glBindBuffer(GL_ARRAY_BUFFER, simpleGroundVbo[1]);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // row start offsets are uniform: row r starts at r*cornersPerRow
+    }
+
+    //
+    // CLOUDS: two triangle strips with per-corner color alpha (legacy
+    // cloudsList). Both strips baked into one VBO; the two strips draw
+    // with two glDrawArrays calls (strip boundaries preserved).
+    //
+    if (cloudsAvailable)
+    {
+        const GLfloat uvScale = 0.25f;
+        GLfloat cloudsOuter[4][3], cloudsInner[4][3];
+        for (int i = 0; i < 4; i++)
+        {
+            cloudsOuter[i][0] = groundPlane[i][0];
+            cloudsOuter[i][1] = groundPlane[i][1];
+            cloudsOuter[i][2] = groundPlane[i][2] + 120.0f * BZDBCache::tankHeight;
+            cloudsInner[i][0] = uvScale * cloudsOuter[i][0];
+            cloudsInner[i][1] = uvScale * cloudsOuter[i][1];
+            cloudsInner[i][2] = cloudsOuter[i][2];
+        }
+
+        // strip 1: inner clouds (4 corners, all alpha 1)
+        // strip 2: outer fade ring (10 corners, alpha alternating 0/1)
+        const int s1 = 4;
+        // strip 2 corner order matches legacy: outer1, inner1, outer2,
+        // inner2, outer3, inner3, outer0, inner0, outer1, inner1
+        const int s2 = 10;
+        std::vector<GLfloat> inter;
+        std::vector<GLfloat> col;
+        inter.reserve((size_t)(s1 + s2) * 8);
+        col.reserve((size_t)(s1 + s2) * 4);
+
+        // strip 1 (inner, full opacity)
+        const int innerOrder[4] = { 3, 2, 0, 1 };
+        for (int i = 0; i < 4; i++)
+        {
+            const int k = innerOrder[i];
+            inter.push_back(cloudsInner[k][0]);
+            inter.push_back(cloudsInner[k][1]);
+            inter.push_back(cloudsInner[k][2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(uvScale * cloudRepeats * squareShape[k][0]);
+            inter.push_back(uvScale * cloudRepeats * squareShape[k][1]);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+        }
+
+        // strip 2 (outer fade, 10 corners, alpha 0 on outer, 1 on inner)
+        const int pairs[5] = { 1, 2, 3, 0, 1 };
+        for (int p = 0; p < 5; p++)
+        {
+            const int k = pairs[p];
+            // outer vertex (alpha 0)
+            inter.push_back(cloudsOuter[k][0]);
+            inter.push_back(cloudsOuter[k][1]);
+            inter.push_back(cloudsOuter[k][2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(cloudRepeats * squareShape[k][0]);
+            inter.push_back(cloudRepeats * squareShape[k][1]);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+            col.push_back(0.0f);
+            // inner vertex (alpha 1)
+            inter.push_back(cloudsInner[k][0]);
+            inter.push_back(cloudsInner[k][1]);
+            inter.push_back(cloudsInner[k][2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(uvScale * cloudRepeats * squareShape[k][0]);
+            inter.push_back(uvScale * cloudRepeats * squareShape[k][1]);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+            col.push_back(1.0f);
+        }
+
+        if (cloudsVboVerts != 0)
+        {
+            bzDeleteBuffers(1, &cloudsVboVerts);
+            cloudsVboVerts = 0;
+        }
+        if (cloudsVboCols != 0)
+        {
+            bzDeleteBuffers(1, &cloudsVboCols);
+            cloudsVboCols = 0;
+        }
+        cloudsVboCount = s1 + s2;
+        bzGenBuffers(1, &cloudsVboVerts);
+        glBindBuffer(GL_ARRAY_BUFFER, cloudsVboVerts);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        bzGenBuffers(1, &cloudsVboCols);
+        glBindBuffer(GL_ARRAY_BUFFER, cloudsVboCols);
+        glBufferData(GL_ARRAY_BUFFER, col.size() * sizeof(GLfloat),
+                     col.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    //
+    // MOUNTAINS: one VBO per mountain texture, 2 strips each. Strip
+    // corners carry per-corner normals + texcoords (legacy
+    // mountainsList[j], two GL_TRIANGLE_STRIPs). The two strips are
+    // stored back to back and drawn with two glDrawArrays calls.
+    //
+    if (numMountainTextures > 0)
+    {
+        // free previous builds first (texture count can change)
+        if (mountainsVboVerts != NULL)
+        {
+            for (int i = 0; i < numMountainTextures; i++)
+            {
+                if (mountainsVboVerts[i] != 0)
+                    bzDeleteBuffers(1, &mountainsVboVerts[i]);
+            }
+            delete[] mountainsVboVerts;
+            delete[] mountainsVboCount;
+            mountainsVboVerts = NULL;
+            mountainsVboCount = NULL;
+        }
+
+        mountainsVboVerts = new GLuint[numMountainTextures];
+        mountainsVboCount = new int[numMountainTextures];
+        for (int i = 0; i < numMountainTextures; i++)
+        {
+            mountainsVboVerts[i] = 0;
+            mountainsVboCount[i] = 0;
+        }
+
+        const int numFacesPerTexture = (NumMountainFaces +
+                                        numMountainTextures - 1) / numMountainTextures;
+        const float angleScale = (float)(M_PI / (numMountainTextures * numFacesPerTexture));
+        const float hightScale = mountainsMinWidth / 256.0f;
+        const int cornersPerStrip = 2 + 2 * (numFacesPerTexture - 1) + 0;
+        // legacy loop: i = 0..numFacesPerTexture inclusive, 2 verts each
+        const int stripCorners = 2 * (numFacesPerTexture + 1);
+
+        int n = numFacesPerTexture / 2;
+        for (int j = 0; j < numMountainTextures; n += numFacesPerTexture, j++)
+        {
+            std::vector<GLfloat> inter;
+            inter.reserve((size_t)stripCorners * 2 * 8);
+            for (int half = 0; half < 2; half++)
+            {
+                for (int i = 0; i <= numFacesPerTexture; i++)
+                {
+                    const float angle = (half == 0)
+                        ? angleScale * (float)(i + n)
+                        : (float)(M_PI + angleScale * (double)(i + n));
+                    float frac = (float)i / (float)numFacesPerTexture;
+                    if (numMountainTextures != 1)
+                        frac = (frac * (float)(mountainsMinWidth - 2) + 1.0f) /
+                               (float)mountainsMinWidth;
+                    inter.push_back(2.25f * worldSize * cosf(angle));
+                    inter.push_back(2.25f * worldSize * sinf(angle));
+                    inter.push_back(0.0f);
+                    inter.push_back((float)(-M_SQRT1_2 * cosf(angle)));
+                    inter.push_back((float)(-M_SQRT1_2 * sinf(angle)));
+                    inter.push_back((float)M_SQRT1_2);
+                    inter.push_back(frac);
+                    inter.push_back(0.02f);
+
+                    inter.push_back(2.25f * worldSize * cosf(angle));
+                    inter.push_back(2.25f * worldSize * sinf(angle));
+                    inter.push_back(0.45f * worldSize * hightScale);
+                    inter.push_back((float)(-M_SQRT1_2 * cosf(angle)));
+                    inter.push_back((float)(-M_SQRT1_2 * sinf(angle)));
+                    inter.push_back((float)M_SQRT1_2);
+                    inter.push_back(frac);
+                    inter.push_back(0.99f);
+                }
+            }
+            mountainsVboCount[j] = stripCorners * 2;
+            bzGenBuffers(1, &mountainsVboVerts[j]);
+            glBindBuffer(GL_ARRAY_BUFFER, mountainsVboVerts[j]);
+            glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                         inter.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+    }
 }
 
 
@@ -2005,6 +2797,8 @@ void BackgroundRenderer::doInitDisplayLists()
     // be wrong until setCelestial is called with the appropriate
     // arguments.
     //
+    makeBgVBOs();
+    makeBgVBOs(renderer);
     makeCelestialLists(renderer);
 }
 
@@ -2012,6 +2806,7 @@ void BackgroundRenderer::doInitDisplayLists()
 void BackgroundRenderer::freeContext(void* self)
 {
     ((BackgroundRenderer*)self)->doFreeDisplayLists();
+    ((BackgroundRenderer*)self)->freeBgVBOs();
 }
 
 

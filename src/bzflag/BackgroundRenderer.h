@@ -83,10 +83,42 @@ private:
     static void     initContext(void*);
     static void     bzdbCallback(const std::string&, void*);
 
+    // VBO path (BZDB "bgVBO"): static geometry that the legacy path
+    // bakes into display lists lives in VBOs instead. One interleaved
+    // vertex buffer (pos3 | normal3 | texcoord2, 8 floats/vertex) plus
+    // a per-vertex color buffer per source geometry, one draw per site.
+    // Legacy display-list path stays byte-identical for A/B.
+    void        makeBgVBOs();
+    void        makeBgVBOs(SceneRenderer&);
+    void        freeBgVBOs();
+    void        drawBgVbo(GLuint vboVerts, GLuint vboCols,
+                          GLenum mode, int count) const;
+    void        drawBgVbo(GLuint vboVerts, GLuint vboCols,
+                          GLenum mode, int count, int first,
+                          bool useTex, bool useNorm) const;
+    bool        useBgVbo() const;
+
     // rendering state
     bool        blank;
     bool        invert;
     int         styleIndex;
+
+    // VBO state: 0 = not built; vboFailed latches upload errors so a
+    // broken path does not retry every frame
+    GLuint      sunVboVerts, sunVboCols;
+    int         sunVboCount;
+    GLuint      moonVboVerts, moonVboCols;
+    int         moonVboCount;
+    GLuint      starVboVerts, starVboCols;
+    int         starVboCount;
+    GLuint      simpleGroundVbo[2];       // [0]=square, [1]=divided strips
+    int         simpleGroundVboCount[2];
+    GLuint      cloudsVboVerts, cloudsVboCols;
+    int         cloudsVboCount;
+    GLuint*     mountainsVboVerts;        // one VBO per mountain texture
+    int*        mountainsVboCount;
+    bool        bgVboFailed;
+    float       moonLimbAngle;  // cached for the VBO draw path
 
     // stuff for ground
     OpenGLGState    groundGState[4];
