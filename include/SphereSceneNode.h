@@ -78,6 +78,15 @@ public:
     static void initContext(void*);
     static void freeContext(void*);
 
+    // VBO path (BZDB "meshVBO"): one interleaved VBO per LOD sphere
+    // (pos3|norm3|tex2, stride 8) replacing the gluSphere display list.
+    // Drawn with one glDrawArrays(GL_TRIANGLES) per list call site.
+    static bool useVbo();
+    static void buildSphereVBOs();
+    static void freeSphereVBOs();
+    static GLuint lodVBOs[sphereLods];
+    static int lodVBOCorners[sphereLods];   // corner (vertex) count per LOD
+
 protected:
     class SphereLodRenderNode final : public RenderNode
     {

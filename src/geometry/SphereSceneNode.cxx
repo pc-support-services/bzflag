@@ -15,6 +15,8 @@
 
 // system headers
 #include <math.h>
+#include <stdint.h> // for intptr_t offset casts
+#include <vector>
 
 // common implementation headers
 #include "SceneRenderer.h"
@@ -124,6 +126,8 @@ bool SphereLodSceneNode::initialized = false;
 GLuint SphereLodSceneNode::lodLists[sphereLods];
 float SphereLodSceneNode::lodPixelsSqr[sphereLods];
 int SphereLodSceneNode::listTriangleCount[sphereLods];
+GLuint SphereLodSceneNode::lodVBOs[sphereLods] = {0, 0, 0, 0, 0};
+int SphereLodSceneNode::lodVBOCorners[sphereLods] = {0, 0, 0, 0, 0};
 
 
 static GLuint buildSphereList(GLdouble radius, GLint slices, GLint stacks)
@@ -149,6 +153,98 @@ static GLuint buildSphereList(GLdouble radius, GLint slices, GLint stacks)
 }
 
 
+// capture the same gluSphere geometry into an interleaved VBO by
+// tessellating the quadric manually (slices/stacks grid, GL_TRIANGLES,
+// smooth normals, GLU_OUTSIDE orientation, texcoords like gluQuadricTexture)
+static void buildSphereVBO(GLint slices, GLint stacks)
+{
+    const int iSlices = slices;
+    const int iStacks = stacks;
+
+    std::vector<GLfloat> inter;
+    inter.reserve((size_t)iSlices * (iStacks - 1) * 6 * 8);
+
+    auto pushVertex = [&inter](float theta, float phi)
+    {
+        // gluSphere convention: theta around Z (0..2pi), phi from
+        // north pole (0..pi); x = cos(theta)*sin(phi),
+        // y = sin(theta)*sin(phi), z = cos(phi)
+        const float st = sinf(theta);
+        const float ct = cosf(theta);
+        const float sp = sinf(phi);
+        const float cp = cosf(phi);
+        const float x = ct * sp;
+        const float y = st * sp;
+        const float z = cp;
+        // gluQuadricTexture: s = theta/2pi, t = 1 - phi/pi
+        const float s = theta / (float)(2.0 * M_PI);
+        const float t = 1.0f - (phi / (float)M_PI);
+        inter.push_back(x);
+        inter.push_back(y);
+        inter.push_back(z);
+        inter.push_back(x); // smooth sphere: normal == position
+        inter.push_back(y);
+        inter.push_back(z);
+        inter.push_back(s);
+        inter.push_back(t);
+    };
+
+    for (int i = 0; i < iSlices; i++)
+    {
+        const float t0 = (float)(2.0 * M_PI * i / iSlices);
+        const float t1 = (float)(2.0 * M_PI * (i + 1) / iSlices);
+        for (int j = 0; j < iStacks - 1; j++)
+        {
+            const float p0 = (float)(M_PI * j / iStacks);
+            const float p1 = (float)(M_PI * (j + 1) / iStacks);
+
+            if (j == 0)
+            {
+                // top triangle fan -> one triangle (apex degenerates)
+                pushVertex(t0, p0);
+                pushVertex(t0, p1);
+                pushVertex(t1, p1);
+            }
+            else if (j == iStacks - 2)
+            {
+                // bottom triangle fan -> one triangle (apex degenerates)
+                pushVertex(t0, p0);
+                pushVertex(t1, p0);
+                pushVertex(t1, p1);
+                pushVertex(t1, p1);
+                pushVertex(t0, p1);
+                pushVertex(t0, p0);
+            }
+            else
+            {
+                // quad -> two triangles
+                pushVertex(t0, p0);
+                pushVertex(t0, p1);
+                pushVertex(t1, p1);
+                pushVertex(t0, p0);
+                pushVertex(t1, p1);
+                pushVertex(t1, p0);
+            }
+        }
+    }
+
+    const int idx = (slices == 32) ? 0 : (slices == 16) ? 1 :
+                    (slices == 8) ? 2 : (slices == 6) ? 3 : 4;
+    SphereLodSceneNode::lodVBOCorners[idx] = (int)inter.size() / 8;
+    bzGenBuffers(1, &SphereLodSceneNode::lodVBOs[idx]);
+    glBindBuffer(GL_ARRAY_BUFFER, SphereLodSceneNode::lodVBOs[idx]);
+    glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                 inter.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    const GLenum error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        bzDeleteBuffers(1, &SphereLodSceneNode::lodVBOs[idx]);
+        SphereLodSceneNode::lodVBOs[idx] = 0;
+    }
+}
+
+
 void SphereLodSceneNode::freeContext(void *)
 {
     for (int i = 0; i < sphereLods; i++)
@@ -159,6 +255,49 @@ void SphereLodSceneNode::freeContext(void *)
             lodLists[i] = INVALID_GL_LIST_ID;
         }
     }
+    freeSphereVBOs();
+    return;
+}
+
+
+bool SphereLodSceneNode::useVbo()
+{
+    return BZDBCache::meshVBO;
+}
+
+
+void SphereLodSceneNode::freeSphereVBOs()
+{
+    for (int i = 0; i < sphereLods; i++)
+    {
+        if (lodVBOs[i] != 0)
+        {
+            bzDeleteBuffers(1, &lodVBOs[i]);
+            lodVBOs[i] = 0;
+        }
+        lodVBOCorners[i] = 0;
+    }
+    return;
+}
+
+
+void SphereLodSceneNode::buildSphereVBOs()
+{
+    freeSphereVBOs();
+    if (!useVbo())
+        return;
+
+    int errCount = 0;
+    while (glGetError() != GL_NO_ERROR)
+    {
+        if (++errCount > 666)
+            return;
+    }
+    buildSphereVBO(32, 32);
+    buildSphereVBO(16, 16);
+    buildSphereVBO(8, 8);
+    buildSphereVBO(6, 6);
+    buildSphereVBO(4, 4);
     return;
 }
 
@@ -193,6 +332,8 @@ void SphereLodSceneNode::initContext(void *)
     lodLists[4] = buildSphereList(1.0,  4, 4);
     lodPixelsSqr[4] = 5.0f * 5.0f;
     listTriangleCount[4] = calcTriCount(4, 4);
+
+    buildSphereVBOs();
 
     return;
 }
@@ -377,11 +518,31 @@ void SphereLodSceneNode::SphereLodRenderNode::render()
     const bool stippled = transparent && !BZDBCache::blend;
 
     const GLuint list = SphereLodSceneNode::lodLists[lod];
+    const GLuint vbo = SphereLodSceneNode::lodVBOs[lod];
+    const int vboCorners = SphereLodSceneNode::lodVBOCorners[lod];
+    const bool useVbo = SphereLodSceneNode::useVbo() && (vbo != 0);
 
     glPushMatrix();
     {
         glTranslatef(sphere[0], sphere[1], sphere[2]);
         glScalef(radius, radius, radius);
+
+        // VBO path: interleaved sphere, one draw per call site. The VBO
+        // carries its OWN corner count (my tessellation != GLU's
+        // tri-count accounting) - never derive it from listTriangleCount
+        if (useVbo)
+        {
+            glDisableClientState(GL_COLOR_ARRAY);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glVertexPointer(3, GL_FLOAT, 8 * sizeof(GLfloat), NULL);
+            glEnableClientState(GL_VERTEX_ARRAY);
+            glNormalPointer(GL_FLOAT, 8 * sizeof(GLfloat),
+                            (const GLvoid*)(intptr_t)(3 * sizeof(GLfloat)));
+            glEnableClientState(GL_NORMAL_ARRAY);
+            glTexCoordPointer(2, GL_FLOAT, 8 * sizeof(GLfloat),
+                              (const GLvoid*)(intptr_t)(6 * sizeof(GLfloat)));
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        }
 
         // invert the color within contained volume
         if (sceneNode->shockWave)
@@ -399,12 +560,18 @@ void SphereLodSceneNode::SphereLodRenderNode::render()
             glEnable(GL_COLOR_LOGIC_OP);
             {
                 glCullFace(GL_FRONT);
-                glCallList(list);
+                if (useVbo)
+                    glDrawArrays(GL_TRIANGLES, 0, vboCorners);
+                else
+                    glCallList(list);
                 addTriangleCount(listTriangleCount[lod]);
                 glCullFace(GL_BACK);
                 if (!sceneNode->inside)
                 {
-                    glCallList(list);
+                    if (useVbo)
+                        glDrawArrays(GL_TRIANGLES, 0, vboCorners);
+                    else
+                        glCallList(list);
                     addTriangleCount(listTriangleCount[lod]);
                 }
                 else
@@ -432,13 +599,19 @@ void SphereLodSceneNode::SphereLodRenderNode::render()
         if (!stippled)
         {
             glCullFace(GL_FRONT);
-            glCallList(list);
+            if (useVbo)
+                glDrawArrays(GL_TRIANGLES, 0, vboCorners);
+            else
+                glCallList(list);
             addTriangleCount(listTriangleCount[lod]);
         }
         glCullFace(GL_BACK);
         if (!sceneNode->inside)
         {
-            glCallList(list);
+            if (useVbo)
+                glDrawArrays(GL_TRIANGLES, 0, vboCorners);
+            else
+                glCallList(list);
             addTriangleCount(listTriangleCount[lod]);
         }
         else
@@ -450,6 +623,9 @@ void SphereLodSceneNode::SphereLodRenderNode::render()
         }
         if (stippled)
             myStipple(0.5f);
+
+        if (useVbo)
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
     glPopMatrix();
 
