@@ -1807,7 +1807,7 @@ void BackgroundRenderer::drawMountains(void)
         const int stripCorners =
             (mountainsVboCount != NULL) ? (mountainsVboCount[i] / 2) : 0;
         if (useBgVbo() && (mountainsVboVerts != NULL)
-            && (mountainsVboVerts[i] != 0) && (stripCorners > 0))
+                && (mountainsVboVerts[i] != 0) && (stripCorners > 0))
         {
             // same two strips the legacy list bakes: 0..numFaces then
             // M_PI..M_PI+numFaces, back to back in one VBO
@@ -2460,8 +2460,8 @@ void BackgroundRenderer::makeBgVBOs(SceneRenderer& renderer)
                 for (int i = 0; i <= numFacesPerTexture; i++)
                 {
                     const float angle = (half == 0)
-                        ? angleScale * (float)(i + n)
-                        : (float)(M_PI + angleScale * (double)(i + n));
+                                        ? angleScale * (float)(i + n)
+                                        : (float)(M_PI + angleScale * (double)(i + n));
                     float frac = (float)i / (float)numFacesPerTexture;
                     if (numMountainTextures != 1)
                         frac = (frac * (float)(mountainsMinWidth - 2) + 1.0f) /
