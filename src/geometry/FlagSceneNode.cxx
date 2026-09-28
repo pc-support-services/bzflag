@@ -37,7 +37,7 @@ constexpr int waveLists = 8;      // GL list count
 int      flagChunks = 8;     // draw flag as 8 quads
 bool     geoPole = false;    // draw the pole as quads
 bool     realFlag = false;   // don't use billboarding
-bool     flagLists = false;  // use display lists
+bool     flagLists = false;  // display lists no longer used (kept for BZDB compat)
 int      triCount = 0;       // number of rendered triangles
 
 const GLfloat Unit = 0.8f;        // meters
@@ -95,10 +95,10 @@ inline void WaveGeometry::executeNoList() const
 
 inline void WaveGeometry::execute() const
 {
-    if (flagLists)
-        glCallList(glList);
-    else
-        executeNoList();
+    // the flag wave data is rebuilt every frame on the CPU (waveFlag),
+    // so a display list only saves the pointer setup - negligible next
+    // to the per-frame CPU work. Draw the client arrays directly.
+    executeNoList();
     return;
 }
 
@@ -166,16 +166,11 @@ void WaveGeometry::waveFlag(float dt)
         txcds[i*2+1][1] = 0.0f;
     }
 
-    // make a GL display list if desired
-    if (flagLists)
-    {
-        glList = glGenLists(1);
-        glNewList(glList, GL_COMPILE);
-        executeNoList();
-        glEndList();
-    }
-    else
-        glList = INVALID_GL_LIST_ID;
+    // display lists are no longer used by the flag wave path (execute()
+    // draws the CPU arrays directly - wave data rebuilds every frame
+    // anyway); keep the BZDB var respected by simply not building lists
+    (void)flagLists;
+    glList = INVALID_GL_LIST_ID;
 
     triCount = flagChunks * 2;
 
