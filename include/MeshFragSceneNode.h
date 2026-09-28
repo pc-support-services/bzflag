@@ -78,9 +78,21 @@ protected:
         static void initContext(void *data);
         static void freeContext(void *data);
 
+        // VBO path (BZDB "meshVBO"): one interleaved VBO per frag
+        // (pos3|norm3|tex2, stride 8) replacing the meshLists display
+        // list. CPU arrays stay (radar/shadow paths read them).
+        void makeVBO();
+        void freeVBO();
+        void drawVboV() const;
+        void drawVboVT() const;
+        void drawVboVN() const;
+        void drawVboVTN() const;
+        bool useVbo() const;
+
     private:
         int style;
         GLuint list;
+        GLuint vbo;
         MeshFragSceneNode &sceneNode;
     };
 

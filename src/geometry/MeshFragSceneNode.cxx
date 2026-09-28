@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <cmath>
 #include <cstring>
+#include <stdint.h> // for intptr_t offset casts
 
 // common implementation headers
 #include "Intersect.h"
@@ -43,6 +44,7 @@ MeshFragSceneNode::Geometry::Geometry(MeshFragSceneNode &node)
     , sceneNode(node)
 {
     list = INVALID_GL_LIST_ID;
+    vbo = 0;
     OpenGLGState::registerContextInitializer (freeContext, initContext, this);
 }
 
@@ -71,6 +73,7 @@ void MeshFragSceneNode::Geometry::initDisplayList()
         drawVTN();
         glEndList();
     }
+    makeVBO();
     return;
 }
 
@@ -80,6 +83,7 @@ void MeshFragSceneNode::Geometry::freeDisplayList()
     if (list != INVALID_GL_LIST_ID)
         glDeleteLists(list, 1);
     list = INVALID_GL_LIST_ID;
+    freeVBO();
     return;
 }
 
@@ -152,6 +156,142 @@ inline void MeshFragSceneNode::Geometry::drawVTN() const
 }
 
 
+bool MeshFragSceneNode::Geometry::useVbo() const
+{
+    return (vbo != 0) && BZDBCache::meshVBO && BZDB.isTrue("meshVBO");
+}
+
+
+void MeshFragSceneNode::Geometry::makeVBO()
+{
+    if (vbo != 0)
+    {
+        bzDeleteBuffers(1, &vbo);
+        vbo = 0;
+    }
+    if (!BZDB.isTrue("meshVBO"))
+        return;
+    if (sceneNode.arrayCount <= 0)
+        return;
+
+    // drain any pending GL errors before upload
+    int errCount = 0;
+    while (glGetError() != GL_NO_ERROR)
+    {
+        if (++errCount > 666)
+            return;
+    }
+
+    const int cornerCount = sceneNode.arrayCount * 3;
+    const GLfloat* vtx = sceneNode.vertices;
+    const GLfloat* nrm = sceneNode.normals;
+    const GLfloat* tex = sceneNode.texcoords;
+
+    std::vector<GLfloat> inter;
+    inter.reserve((size_t)cornerCount * 8);
+    for (int i = 0; i < cornerCount; i++)
+    {
+        inter.push_back(vtx[i * 3 + 0]);
+        inter.push_back(vtx[i * 3 + 1]);
+        inter.push_back(vtx[i * 3 + 2]);
+        inter.push_back(nrm[i * 3 + 0]);
+        inter.push_back(nrm[i * 3 + 1]);
+        inter.push_back(nrm[i * 3 + 2]);
+        inter.push_back(tex[i * 2 + 0]);
+        inter.push_back(tex[i * 2 + 1]);
+    }
+
+    bzGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                 inter.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    const GLenum error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        bzDeleteBuffers(1, &vbo);
+        vbo = 0;
+    }
+    return;
+}
+
+
+void MeshFragSceneNode::Geometry::freeVBO()
+{
+    if (vbo != 0)
+    {
+        bzDeleteBuffers(1, &vbo);
+        vbo = 0;
+    }
+    return;
+}
+
+
+void MeshFragSceneNode::Geometry::drawVboV() const
+{
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexPointer(3, GL_FLOAT, 8 * sizeof(GLfloat), NULL);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glDrawArrays(GL_TRIANGLES, 0, sceneNode.arrayCount * 3);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
+void MeshFragSceneNode::Geometry::drawVboVT() const
+{
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexPointer(3, GL_FLOAT, 8 * sizeof(GLfloat), NULL);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 8 * sizeof(GLfloat),
+                      (const GLvoid*)(intptr_t)(6 * sizeof(GLfloat)));
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDrawArrays(GL_TRIANGLES, 0, sceneNode.arrayCount * 3);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
+void MeshFragSceneNode::Geometry::drawVboVN() const
+{
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexPointer(3, GL_FLOAT, 8 * sizeof(GLfloat), NULL);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glNormalPointer(GL_FLOAT, 8 * sizeof(GLfloat),
+                    (const GLvoid*)(intptr_t)(3 * sizeof(GLfloat)));
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glDrawArrays(GL_TRIANGLES, 0, sceneNode.arrayCount * 3);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
+void MeshFragSceneNode::Geometry::drawVboVTN() const
+{
+    glDisableClientState(GL_COLOR_ARRAY);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexPointer(3, GL_FLOAT, 8 * sizeof(GLfloat), NULL);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glNormalPointer(GL_FLOAT, 8 * sizeof(GLfloat),
+                    (const GLvoid*)(intptr_t)(3 * sizeof(GLfloat)));
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 8 * sizeof(GLfloat),
+                      (const GLvoid*)(intptr_t)(6 * sizeof(GLfloat)));
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDrawArrays(GL_TRIANGLES, 0, sceneNode.arrayCount * 3);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
 void MeshFragSceneNode::Geometry::render()
 {
     const int triangles = sceneNode.arrayCount;
@@ -163,7 +303,24 @@ void MeshFragSceneNode::Geometry::render()
     // set the color
     sceneNode.setColor();
 
-    if (list != INVALID_GL_LIST_ID)
+    if (useVbo())
+    {
+        if (BZDBCache::lighting)
+        {
+            if (BZDBCache::texture)
+                drawVboVTN();
+            else
+                drawVboVN();
+        }
+        else
+        {
+            if (BZDBCache::texture)
+                drawVboVT();
+            else
+                drawVboV();
+        }
+    }
+    else if (list != INVALID_GL_LIST_ID)
         glCallList(list);
     else
     {
@@ -195,7 +352,18 @@ void MeshFragSceneNode::Geometry::render()
 void MeshFragSceneNode::Geometry::renderShadow()
 {
     const int triangles = sceneNode.arrayCount;
-    if (list != INVALID_GL_LIST_ID)
+    if (useVbo())
+    {
+        glDisableClientState(GL_NORMAL_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL_COLOR_ARRAY);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glVertexPointer(3, GL_FLOAT, 8 * sizeof(GLfloat), NULL);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_TRIANGLES, 0, triangles * 3);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    else if (list != INVALID_GL_LIST_ID)
         glCallList(list);
     else
     {
