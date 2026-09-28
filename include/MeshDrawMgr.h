@@ -36,14 +36,43 @@ private:
 
     void makeLists();
     void freeLists();
+
+    // VBO path: one interleaved vertex buffer + one shared element
+    // buffer per source drawInfo, replacing per-frame client-array
+    // setup and per-set display lists (see the tank port pattern in
+    // TankGeometryMgr for the state-discipline rules)
+    void makeVBOs();
+    void freeVBOs();
+    void drawVboSet(int lod, int set, bool useNormals, bool useTexcoords);
+    void drawVboSetGeometry(int lod, int set);
+    bool useVbo() const;
+
     static void initContext(void* data);
     static void freeContext(void* data);
+
+    // one draw-elements command referencing the shared element VBO
+    struct GpuCmd
+    {
+        GLenum mode;        // from DrawCmd::drawMode
+        GLsizei count;      // from DrawCmd::count
+        GLenum type;        // from DrawCmd::indexType (ushort/uint)
+        uintptr_t offset;   // byte offset into the shared element VBO
+    };
+    // per (lod,set) GPU command list, parallel to DrawLod/DrawSet
+    using GpuSet = std::vector<GpuCmd>;
 
 private:
     const MeshDrawInfo* drawInfo;
 
     using LodList = std::vector<int>;
     std::vector<LodList> lodLists;
+
+    // VBO state: 0 = not built; vboFailed latches upload errors so a
+    // broken path does not retry every frame
+    GLuint vboVerts;
+    GLuint vboElem;
+    bool vboFailed;
+    std::vector< std::vector<GpuSet> > lodGpuSets;  // [lod][set] -> cmds
 };
 
 

@@ -75,6 +75,8 @@ public:
     static Bool  showCollisionGrid;
     static Bool  showCullingGrid;
     static Bool  useMeshForRadar;
+    static Bool  meshVBO;
+    static Bool  bgVBO;
 
     static Bool drawCelestial;
     static Bool drawClouds;

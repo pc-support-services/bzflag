@@ -41,6 +41,8 @@ BZDBCache::Float BZDBCache::pulseDepth;
 BZDBCache::Int   BZDBCache::controlPanelTimestamp;
 BZDBCache::Bool  BZDBCache::showCollisionGrid;
 BZDBCache::Bool  BZDBCache::showCullingGrid;
+BZDBCache::Bool  BZDBCache::meshVBO;
+BZDBCache::Bool  BZDBCache::bgVBO;
 
 BZDBCache::Bool  BZDBCache::drawCelestial;
 BZDBCache::Bool  BZDBCache::drawClouds;
@@ -111,6 +113,8 @@ void BZDBCache::init()
     BZDB.addCallback("smooth", clientCallback, NULL);
     BZDB.addCallback("colorful", clientCallback, NULL);
     BZDB.addCallback("animatedTreads", clientCallback, NULL);
+    BZDB.addCallback("meshVBO", clientCallback, NULL);
+    BZDB.addCallback("bgVBO", clientCallback, NULL);
     BZDB.addCallback("shotLength", clientCallback, NULL);
     BZDB.addCallback("leadingShotLine", clientCallback, NULL);
     BZDB.addCallback("radarPosition", clientCallback, NULL);
@@ -199,6 +203,10 @@ void BZDBCache::clientCallback(const std::string& name, void *)
         radarTankPixels = BZDB.eval("radarTankPixels");
     else if (name == "animatedTreads")
         animatedTreads = BZDB.isTrue("animatedTreads");
+    else if (name == "meshVBO")
+        meshVBO = BZDB.isTrue("meshVBO");
+    else if (name == "bgVBO")
+        bgVBO = BZDB.isTrue("bgVBO");
     else if (name == "shotLength")
         shotLength = BZDB.eval("shotLength");
     else if (name == "leadingShotLine")
