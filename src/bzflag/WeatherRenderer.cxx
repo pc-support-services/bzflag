@@ -74,6 +74,15 @@ WeatherRenderer::WeatherRenderer()
 
     dropList = puddleList = INVALID_GL_LIST_ID;
 
+    // wxVBO state
+    dropVboBillboard = 0;
+    dropVboBillboardCount = 0;
+    dropVboVertical = 0;
+    dropVboVerticalStrip = 0;
+    puddleVbo = 0;
+    puddleVboCount = 0;
+    wxVboFailed = false;
+
     gridSize = 200.0f;
 
     keyFactor = 1.0f / gridSize;
@@ -147,6 +156,7 @@ void WeatherRenderer::init(void)
     puddleState = gstate.getState();
 
     buildPuddleList();
+    makeWxVBOs();
 }
 
 
@@ -341,6 +351,9 @@ void WeatherRenderer::set(void)
         // update the actual puddle material
         puddleState = puddleGStateBuilder.getState();
 
+        // rainSize may have changed: rebuild the wx VBOs
+        freeWxVBOs();
+
 
         // make sure we know where to start and stop the rain
         // we want to compute the heights for us
@@ -418,6 +431,7 @@ void WeatherRenderer::set(void)
         }
         // recompute the drops based on the possible new size
         buildDropList();
+        makeWxVBOs();
 
         if (_CULLING_RAIN)   // need to update the bbox depths on all the chunks
         {
@@ -615,6 +629,224 @@ void WeatherRenderer::freeContext(void)
         glDeleteLists(puddleList, 1);
         puddleList = INVALID_GL_LIST_ID;
     }
+    freeWxVBOs();
+    return;
+}
+
+
+bool WeatherRenderer::useWxVbo() const
+{
+    return BZDBCache::bgVBO && !wxVboFailed;
+}
+
+
+void WeatherRenderer::drawWxVbo(GLuint vboVerts, GLenum mode,
+                                int count, int first) const
+{
+    if ((vboVerts == 0) || (count <= 0))
+        return;
+
+    const GLint stride = 8 * sizeof(GLfloat);   // pos3 | zero-normal3 | tex2
+    const GLint base = first * stride;
+
+    // snapshot + restore the texcoord-array bit like drawBgVbo
+    GLboolean savedTex;
+    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &savedTex);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboVerts);
+    glVertexPointer(3, GL_FLOAT, stride, (const GLvoid*)(intptr_t)base);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, stride,
+                      (const GLvoid*)(intptr_t)(base + 6 * sizeof(GLfloat)));
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+
+    glDrawArrays(mode, 0, count);
+
+    if (savedTex)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    else
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    return;
+}
+
+
+void WeatherRenderer::freeWxVBOs()
+{
+    GLuint* const all[] =
+    {
+        &dropVboBillboard, &dropVboVertical, &puddleVbo
+    };
+    const int total = bzcountof(all);
+    for (int i = 0; i < total; i++)
+    {
+        if (*all[i] != 0)
+        {
+            bzDeleteBuffers(1, all[i]);
+            *all[i] = 0;
+        }
+    }
+    dropVboBillboardCount = 0;
+    dropVboVerticalStrip = 0;
+    puddleVboCount = 0;
+    wxVboFailed = false;
+    return;
+}
+
+
+void WeatherRenderer::makeWxVBOs()
+{
+    if (dropVboBillboard != 0)
+        return; // already built
+
+    // rainSize-dependent geometry: rebuild when rain state changes
+    // (freeWxVBOs is called by buildDropList/buildPuddleList triggers)
+    GLenum error;
+    int errCount = 0;
+    while (true)
+    {
+        error = glGetError();
+        if (error == GL_NO_ERROR)
+            break;
+        errCount++;
+        if (errCount > 666)
+            return;
+    }
+
+    std::vector<GLfloat> inter;
+    inter.reserve(4 * 8 * 4);
+
+    // billboard drop quad: one strip, corners (x,y,z,tex) matching the
+    // legacy doBillBoards geometry
+    inter.clear();
+    {
+        const float rs0 = -rainSize[0];
+        const float rs1 = rainSize[0];
+        const float rs2 = -rainSize[1];
+        const float rs3 = rainSize[1];
+        // tex(0,0) v(-rs0,-rs2,0); tex(1,0) v(rs1,-rs2,0);
+        // tex(0,1) v(-rs0,rs3,0); tex(1,1) v(rs1,rs3,0)
+        const GLfloat v[4][3] =
+        {
+            { rs0, rs2, 0.0f }, { rs1, rs2, 0.0f },
+            { rs0, rs3, 0.0f }, { rs1, rs3, 0.0f }
+        };
+        const GLfloat t[4][2] =
+        {
+            { 0.0f, 0.0f }, { 1.0f, 0.0f },
+            { 0.0f, 1.0f }, { 1.0f, 1.0f }
+        };
+        for (int i = 0; i < 4; i++)
+        {
+            inter.push_back(v[i][0]);
+            inter.push_back(v[i][1]);
+            inter.push_back(v[i][2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(t[i][0]);
+            inter.push_back(t[i][1]);
+        }
+        dropVboBillboardCount = 4;
+        bzGenBuffers(1, &dropVboBillboard);
+        glBindBuffer(GL_ARRAY_BUFFER, dropVboBillboard);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // vertical drop: 3 strips, each the vertical quad, conceptually at
+    // 0/120/240 degree rotations. The legacy list baked the rotations
+    // via glRotatef INSIDE the list (around +Z); the VBO stores the
+    // rotated quads directly (rotation is cheap trig at build time).
+    inter.clear();
+    {
+        const float rs0 = -rainSize[0];
+        const float rs1 = rainSize[0];
+        const float rs2 = -rainSize[1];
+        const float rs3 = rainSize[1];
+        const GLfloat t[4][2] =
+        {
+            { 0.0f, 0.0f }, { 1.0f, 0.0f },
+            { 0.0f, 1.0f }, { 1.0f, 1.0f }
+        };
+        for (int s = 0; s < 3; s++)
+        {
+            const float a = (float)(120.0 * s * M_PI / 180.0);
+            const float ca = cosf(a);
+            const float sa = sinf(a);
+            // legacy strip corners in (x, 0, z) local space
+            const GLfloat v[4][3] =
+            {
+                { rs0, 0.0f, rs2 }, { rs1, 0.0f, rs2 },
+                { rs0, 0.0f, rs3 }, { rs1, 0.0f, rs3 }
+            };
+            for (int i = 0; i < 4; i++)
+            {
+                // rotate around +Z: x' = x*ca - y*sa; y' = x*sa + y*ca
+                const float x = v[i][0];
+                const float y = v[i][1];
+                inter.push_back(x * ca - y * sa);
+                inter.push_back(x * sa + y * ca);
+                inter.push_back(v[i][2]);
+                inter.push_back(0.0f);
+                inter.push_back(0.0f);
+                inter.push_back(1.0f);
+                inter.push_back(t[i][0]);
+                inter.push_back(t[i][1]);
+            }
+        }
+        dropVboVerticalStrip = 4;
+        bzGenBuffers(1, &dropVboVertical);
+        glBindBuffer(GL_ARRAY_BUFFER, dropVboVertical);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // puddle quad: scale 1, drawn with glScalef(scale) at draw time
+    inter.clear();
+    {
+        const GLfloat v[4][3] =
+        {
+            { -1.0f, -1.0f, 0.0f }, { 1.0f, -1.0f, 0.0f },
+            { -1.0f, 1.0f, 0.0f }, { 1.0f, 1.0f, 0.0f }
+        };
+        const GLfloat t[4][2] =
+        {
+            { 0.0f, 0.0f }, { 1.0f, 0.0f },
+            { 0.0f, 1.0f }, { 1.0f, 1.0f }
+        };
+        for (int i = 0; i < 4; i++)
+        {
+            inter.push_back(v[i][0]);
+            inter.push_back(v[i][1]);
+            inter.push_back(v[i][2]);
+            inter.push_back(0.0f);
+            inter.push_back(0.0f);
+            inter.push_back(1.0f);
+            inter.push_back(t[i][0]);
+            inter.push_back(t[i][1]);
+        }
+        puddleVboCount = 4;
+        bzGenBuffers(1, &puddleVbo);
+        glBindBuffer(GL_ARRAY_BUFFER, puddleVbo);
+        glBufferData(GL_ARRAY_BUFFER, inter.size() * sizeof(GLfloat),
+                     inter.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    error = glGetError();
+    if (error != GL_NO_ERROR)
+    {
+        logDebugMessage(1,"WeatherRenderer::makeWxVBOs() upload glError: %i\n", error);
+        freeWxVBOs();
+        wxVboFailed = true;
+    }
+    else
+        logDebugMessage(3,"WeatherRenderer::makeWxVBOs() built\n");
     return;
 }
 
@@ -623,6 +855,7 @@ void WeatherRenderer::rebuildContext(void)
 {
     buildDropList();
     buildPuddleList();
+    makeWxVBOs();
     return;
 }
 
@@ -900,10 +1133,23 @@ void WeatherRenderer::drawDrop(rain& drop, const SceneRenderer& sr)
         if (spinRain)
             glRotatef(lastRainTime * 10.0f * rainSpeed, 0, 0, 1);
 
-        if (1)
-            glCallList(dropList);
+        if (useWxVbo() && (dropVboBillboard != 0))
+        {
+            if (doBillBoards)
+                drawWxVbo(dropVboBillboard, GL_TRIANGLE_STRIP,
+                          dropVboBillboardCount, 0);
+            else
+            {
+                // 3 strips back to back; vertical variant has no baked
+                // spin - spinRain rotation still applied by the matrix
+                for (int s = 0; s < 3; s++)
+                    drawWxVbo(dropVboVertical, GL_TRIANGLE_STRIP,
+                              dropVboVerticalStrip,
+                              s * dropVboVerticalStrip);
+            }
+        }
         else
-            buildDropList(true);
+            glCallList(dropList);
         glPopMatrix();
     }
 }
@@ -920,10 +1166,10 @@ void WeatherRenderer::drawPuddle(puddle& splash)
     glColor4f(puddleColor[0], puddleColor[1], puddleColor[2], 1.0f - lifeTime);
 
     glScalef(scale, scale, scale);
-    if (1)
-        glCallList(puddleList);
+    if (useWxVbo() && (puddleVbo != 0))
+        drawWxVbo(puddleVbo, GL_TRIANGLE_STRIP, puddleVboCount, 0);
     else
-        buildPuddleList(true);
+        glCallList(puddleList);
 
     glPopMatrix();
 }

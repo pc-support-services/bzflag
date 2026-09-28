@@ -106,6 +106,23 @@ protected:
     void buildDropList(bool draw = false);
     void buildPuddleList(bool draw = false);
 
+    // VBO path (BZDB "wxVBO"): the drop/puddle quads live in static
+    // VBOs instead of display lists. Legacy lists kept for A/B.
+    void makeWxVBOs();
+    void freeWxVBOs();
+    void drawWxVbo(GLuint vboVerts, GLenum mode, int count, int first) const;
+    bool useWxVbo() const;
+
+    // drop quad VBOs: billboard variant (1 strip) and vertical variant
+    // (3 strips at 120-degree rotations, back to back)
+    GLuint      dropVboBillboard;
+    int         dropVboBillboardCount;
+    GLuint      dropVboVertical;
+    int         dropVboVerticalStrip;     // corners per strip
+    GLuint      puddleVbo;
+    int         puddleVboCount;
+    bool        wxVboFailed;
+
     bool updateDrop(std::vector<rain>::iterator &drop, float frameTime, std::vector<rain> &toAdd);
     bool updatePuddle(std::vector<puddle>::iterator &splash, float frameTime);
 
