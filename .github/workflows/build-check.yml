@@ -210,18 +210,48 @@ jobs:
 
       - name: Collect binaries and DLLs
         run: |
-          set -ux
-          mkdir -p pkg/bin pkg/share/bzflag
-          for exe in src/bzflag/bzflag.exe src/bzfs/bzfs.exe src/bzadmin/bzadmin.exe; do
-            [ -f "$exe" ] || { echo "SKIP missing $exe"; continue; }
-            cp "$exe" pkg/bin/
-            ldd "$exe" | awk '$3 ~ /^\/mingw64\// {print $3}' | sort -u | while read -r dll; do
-              cp -n "$dll" pkg/bin/
+          set -eux
+          # Flat layout: exes + data/ side by side. The client resolves its
+          # data dir as <exe_dir>\data (src/bzflag/bzflag.cxx Win32 branch),
+          # so data MUST live next to bzflag.exe.
+          mkdir -p pkg
+          # libtool on mingw wraps the client in a stub that execs
+          # <dir>/.libs/<exe>; shipping the wrapper ships a 60KB
+          # "temporary wrapper script" binary instead of the game. Always
+          # prefer the .libs binary.
+          collect() {
+            exe="$1"
+            real="$exe"
+            dir="$(dirname "$exe")"
+            if [ -f "$dir/.libs/$(basename "$exe")" ]; then
+              real="$dir/.libs/$(basename "$exe")"
+            fi
+            echo "collect $exe -> $real"
+            cp "$real" pkg/
+            ldd "$real" | awk '$3 ~ /^\/mingw64\// {print $3}' | sort -u | while read -r dll; do
+              cp -n "$dll" pkg/
             done
-          done
-          cp -R data pkg/share/bzflag/ 2>/dev/null || true
+          }
+          collect src/bzflag/bzflag.exe
+          collect src/bzfs/bzfs.exe
+          collect src/bzadmin/bzadmin.exe
+          cp -R data pkg/data
           find pkg -type d -name '.deps' -exec rm -rf {} + || true
-          ls -la pkg/bin
+          ls -la pkg
+
+      - name: Verify package contents
+        # Gate, don't trust: a broken tree must fail the job before the
+        # artifacts hit the release.
+        run: |
+          set -e
+          fail() { echo "PACKAGE CHECK FAILED: $1"; exit 1; }
+          [ -f pkg/bzflag.exe ] || fail "pkg/bzflag.exe missing"
+          [ "$(stat -c%s pkg/bzflag.exe)" -gt 500000 ] || fail "bzflag.exe too small - libtool wrapper shipped?"
+          ldd pkg/bzflag.exe | grep -i "SDL2.dll" || fail "bzflag.exe not linked against SDL2.dll"
+          ldd pkg/bzflag.exe | grep -i "glew32.dll" || fail "bzflag.exe not linked against glew32.dll"
+          ! strings pkg/bzflag.exe | grep -qi "temporary wrapper" || fail "libtool wrapper shipped as bzflag.exe"
+          [ -f pkg/data/fonts/DejaVuSansCondensedBold_16.png ] || fail "data/fonts missing next to exe"
+          ls -la pkg
 
       - name: Zip portable package
         run: |
@@ -238,7 +268,7 @@ jobs:
           Page instfiles
           Section
             SetOutPath "$INSTDIR"
-            File /r pkg\*.*
+            File /r pkg\*
           SectionEnd
           NSI
           makensis bzflag.nsi
