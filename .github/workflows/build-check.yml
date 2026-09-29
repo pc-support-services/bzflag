@@ -42,6 +42,46 @@ jobs:
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
           cp pkg/usr/local/bin/bzflag "$APP/Contents/MacOS/bzflag"
           cp -R pkg/usr/local/share/bzflag "$APP/Contents/Resources/bzflag"
+          # Bundle dylib deps and rewrite load commands. Without this the
+          # binary keeps absolute /opt/homebrew/... references that only
+          # exist on the CI runner and dyld refuses to launch anywhere else.
+          EXE="$APP/Contents/MacOS/bzflag"
+          FW="$APP/Contents/Frameworks"
+          copy_deps() {
+            local bin="$1"
+            otool -L "$bin" | awk 'NR>1 {print $1}' | while read -r dep; do
+              case "$dep" in
+                @executable_path/*|@rpath/*|/System/*|/usr/lib/*) continue ;;
+              esac
+              local name base
+              name="$(basename "$dep")"
+              [ -e "$FW/$name" ] || { cp -L "$dep" "$FW/$name"; }
+              install_name_tool -change "$dep" "@executable_path/../Frameworks/$name" "$bin"
+            done
+            # second pass: dylibs bundled above can themselves reference
+            # /opt/homebrew paths (e.g. sdl2-compat -> libSDL2)
+            for lib in "$FW"/*.dylib; do
+              [ -e "$lib" ] || continue
+              otool -L "$lib" | awk 'NR>1 {print $1}' | grep '^/opt/homebrew\|^/usr/local' | while read -r dep; do
+                local name; name="$(basename "$dep")"
+                [ -e "$FW/$name" ] || cp -L "$dep" "$FW/$name"
+                install_name_tool -change "$dep" "@rpath/$name" "$lib"
+              done
+              install_name_tool -add_rpath "@executable_path/../Frameworks" "$lib" 2>/dev/null || true
+            done
+          }
+          copy_deps "$EXE"
+          find "$APP/Contents/Resources/bzflag" -type f -perm -111 -name '*.so' | while read -r plugin; do
+            otool -L "$plugin" | awk 'NR>1 {print $1}' | while read -r dep; do
+              case "$dep" in
+                @executable_path/*|@rpath/*|/System/*|/usr/lib/*) continue ;;
+              esac
+              name="$(basename "$dep")"
+              if [ -e "$FW/$name" ]; then
+                install_name_tool -change "$dep" "@executable_path/../Frameworks/$name" "$plugin"
+              fi
+            done
+          done
           cat > "$APP/Contents/Info.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -59,6 +99,23 @@ jobs:
           </plist>
           PLIST
           codesign --force --deep --sign - "$APP" || true
+
+      - name: Verify app bundle
+        # Gate: the dmg must not leave CI still pointing at /opt/homebrew.
+        run: |
+          set -e
+          fail() { echo "BUNDLE CHECK FAILED: $1"; exit 1; }
+          EXE="dist/BZFlag.app/Contents/MacOS/bzflag"
+          [ -f "$EXE" ] || fail "bzflag binary missing from app bundle"
+          # every non-system load command must now be in-bundle
+          BAD=$(otool -L "$EXE" | awk 'NR>1 {print $1}' | grep -c '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+          [ "$BAD" -eq 0 ] || fail "$BAD load commands still reference runner paths"
+          FW="dist/BZFlag.app/Contents/Frameworks"
+          [ -f "$FW/libSDL2-2.0.0.dylib" ] || [ -f "$FW/libSDL2.dylib" ] || fail "SDL2 dylib not bundled"
+          [ -e "$FW/libGLEW" ] || ls "$FW"/libGLEW* >/dev/null 2>&1 || fail "GLEW dylib not bundled"
+          otool -l "$EXE" | grep -q "LC_LOAD_DYLIB" || fail "no load commands found"
+          ls -la "$FW"
+          echo "bundle check OK: no runner-path load commands remain"
 
       - name: Build DMG
         run: |
