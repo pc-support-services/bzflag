@@ -1,0 +1,3 @@
+This is RESULTS.txt - created when you run the diagnostic tools in this
+folder. Everything they find gets appended below. Send this file back
+along with diag-log.txt and eventlog-bzflag.txt.
