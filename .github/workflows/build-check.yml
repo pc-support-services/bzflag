@@ -96,6 +96,23 @@ jobs:
             esac
             install_name_tool -add_rpath "@executable_path/../Frameworks" "$lib" 2>/dev/null || true
           done
+          # brew sdl2 = sdl2-compat SHIM: it dlopens libSDL3.dylib at
+          # runtime (search order @loader_path, @executable_path, plain
+          # name). Without SDL3 next to it the app dies with "Fatal error!
+          # Cannot continue! Failed loading SDL3 library." on any Mac
+          # without brew's sdl3 installed. Bundle it explicitly.
+          SDL3SRC="$(brew --prefix sdl3 2>/dev/null)/lib/libSDL3.dylib"
+          if [ -f "$SDL3SRC" ]; then
+            cp -L "$SDL3SRC" "$FW/libSDL3.dylib"
+          else
+            SDL3FND="$(find "$(brew --prefix)/opt" -maxdepth 3 -name 'libSDL3*.dylib' 2>/dev/null | head -1)"
+            if [ -z "$SDL3FND" ]; then
+              echo "brew sdl3 dylib candidates:"; ls "$(brew --prefix)/opt/sdl3/lib" 2>/dev/null || true
+              fail "libSDL3.dylib not found in brew sdl3"
+            fi
+            cp -L "$SDL3FND" "$FW/libSDL3.dylib"
+          fi
+          [ -f "$FW/libSDL3.dylib" ] || fail "libSDL3.dylib copy failed"
           find "$APP/Contents/Resources/bzflag" -type f -perm -111 -name '*.so' | while read -r plugin; do
             otool -L "$plugin" | awk 'NR>1 {print $1}' | while read -r dep; do
               case "$dep" in
