@@ -366,14 +366,17 @@ jobs:
             file "pkg/$exe" | grep -q "PE32+" || fail "$exe is not PE32+ (x64) as claimed"
           done
           # every non-system DLL the exes import must be INSIDE pkg/
-          # (guard the whole pipeline from pipefail-abort on no-match)
-          { ldd pkg/bzflag.exe pkg/bzfs.exe pkg/bzadmin.exe \
-            | awk '{print $3}' | grep '^/mingw64/' | sort -u \
-            | while read -r dll; do
-                name="$(basename "$dll")"
-                [ -f "pkg/$name" ] || { echo "PACKAGE CHECK FAILED: $name imported but missing from pkg/"; exit 1; }
-              done
-          } || fail "imported DLL missing from pkg/"
+          # (no pipeline loops: pipefail + set -e makes them abort
+          # silently; collect the imports into a file, then loop plainly)
+          ldd pkg/bzflag.exe pkg/bzfs.exe pkg/bzadmin.exe \
+            | awk '{print $3}' | grep '^/mingw64/' | sort -u > /tmp/imports.txt || true
+          MISSING=""
+          while read -r dll; do
+            [ -n "$dll" ] || continue
+            name="$(basename "$dll")"
+            [ -f "pkg/$name" ] || MISSING="$MISSING $name"
+          done < /tmp/imports.txt
+          [ -z "$MISSING" ] || fail "imported DLL(s) missing from pkg/:$MISSING"
           ldd pkg/bzflag.exe | grep -i "SDL2.dll" || fail "bzflag.exe not linked against SDL2.dll"
           ldd pkg/bzflag.exe | grep -i "glew32.dll" || fail "bzflag.exe not linked against glew32.dll"
           [ -f pkg/data/fonts/DejaVuSansCondensedBold_16.png ] || fail "data/fonts missing next to exe"
