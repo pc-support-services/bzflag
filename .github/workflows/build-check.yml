@@ -352,21 +352,28 @@ jobs:
         run: |
           set -e
           fail() { echo "PACKAGE CHECK FAILED: $1"; exit 1; }
+          # NOTE: default GH shell for this step is msys2 with pipefail ON:
+          # a `cmd | grep -qi pattern` that finds NOTHING exits 1 and, under
+          # pipefail, aborts the whole script silently (`set -e`). So the
+          # negative check must NOT be a bare pipeline in a && list — use
+          # `! grep` on a command substitution's captured output instead.
           # all three exes must exist, be real binaries (not libtool
           # wrappers) and x64 (PE32+), and have their full DLL set staged
           for exe in bzflag.exe bzfs.exe bzadmin.exe; do
             [ -f "pkg/$exe" ] || fail "pkg/$exe missing"
             [ "$(stat -c%s "pkg/$exe")" -gt 500000 ] || fail "$exe too small - libtool wrapper shipped?"
-            strings "pkg/$exe" | grep -qi "temporary wrapper" && fail "libtool wrapper shipped as $exe"
+            if strings "pkg/$exe" | grep -qi "temporary wrapper"; then fail "libtool wrapper shipped as $exe"; fi
             file "pkg/$exe" | grep -q "PE32+" || fail "$exe is not PE32+ (x64) as claimed"
           done
           # every non-system DLL the exes import must be INSIDE pkg/
-          ldd pkg/bzflag.exe pkg/bzfs.exe pkg/bzadmin.exe \
+          # (guard the whole pipeline from pipefail-abort on no-match)
+          { ldd pkg/bzflag.exe pkg/bzfs.exe pkg/bzadmin.exe \
             | awk '{print $3}' | grep '^/mingw64/' | sort -u \
             | while read -r dll; do
                 name="$(basename "$dll")"
                 [ -f "pkg/$name" ] || { echo "PACKAGE CHECK FAILED: $name imported but missing from pkg/"; exit 1; }
               done
+          } || fail "imported DLL missing from pkg/"
           ldd pkg/bzflag.exe | grep -i "SDL2.dll" || fail "bzflag.exe not linked against SDL2.dll"
           ldd pkg/bzflag.exe | grep -i "glew32.dll" || fail "bzflag.exe not linked against glew32.dll"
           [ -f pkg/data/fonts/DejaVuSansCondensedBold_16.png ] || fail "data/fonts missing next to exe"
