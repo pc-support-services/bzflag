@@ -58,19 +58,36 @@ jobs:
               [ -e "$FW/$name" ] || { cp -L "$dep" "$FW/$name"; }
               install_name_tool -change "$dep" "@executable_path/../Frameworks/$name" "$bin"
             done
-            # second pass: dylibs bundled above can themselves reference
-            # /opt/homebrew paths (e.g. sdl2-compat -> libSDL2)
-            for lib in "$FW"/*.dylib; do
-              [ -e "$lib" ] || continue
-              otool -L "$lib" | awk 'NR>1 {print $1}' | grep '^/opt/homebrew\|^/usr/local' | while read -r dep; do
-                local name; name="$(basename "$dep")"
-                [ -e "$FW/$name" ] || cp -L "$dep" "$FW/$name"
-                install_name_tool -change "$dep" "@rpath/$name" "$lib"
-              done
-              install_name_tool -add_rpath "@executable_path/../Frameworks" "$lib" 2>/dev/null || true
+          }
+          rewrite_one() {
+            # bundle any non-system deps of a bundled dylib and rewrite
+            # them to @rpath — run repeatedly until nothing changes
+            # (brew chains go deeper than one level: sdl3->brotli etc.)
+            local lib="$1"
+            otool -L "$lib" | awk 'NR>1 {print $1}' | grep '^/opt/homebrew\|^/usr/local\|^/Users/' | while read -r dep; do
+              local name; name="$(basename "$dep")"
+              [ -e "$FW/$name" ] || cp -L "$dep" "$FW/$name"
+              install_name_tool -change "$dep" "@rpath/$name" "$lib"
             done
           }
           copy_deps "$EXE"
+          # transitive closure: keep rewriting/bundling until a fixed point
+          for _ in 1 2 3 4 5 6; do
+            changed=0
+            for lib in "$FW"/*.dylib; do
+              [ -e "$lib" ] || continue
+              before=$(otool -L "$lib" | awk 'NR>1 {print $1}' | grep -c '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+              [ "$before" -gt 0 ] || continue
+              rewrite_one "$lib"
+              after=$(otool -L "$lib" | awk 'NR>1 {print $1}' | grep -c '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+              [ "$before" != "$after" ] && changed=1
+            done
+            [ "$changed" -eq 1 ] || break
+          done
+          for lib in "$FW"/*.dylib; do
+            [ -e "$lib" ] || continue
+            install_name_tool -add_rpath "@executable_path/../Frameworks" "$lib" 2>/dev/null || true
+          done
           find "$APP/Contents/Resources/bzflag" -type f -perm -111 -name '*.so' | while read -r plugin; do
             otool -L "$plugin" | awk 'NR>1 {print $1}' | while read -r dep; do
               case "$dep" in
@@ -116,6 +133,10 @@ jobs:
                      $(find dist/BZFlag.app/Contents/Resources -type f -perm -111 -name '*.so'); do
             [ -e "$bin" ] || continue
             N=$(otool -L "$bin" | awk 'NR>1 {print $1}' | grep -c '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+            if [ "$N" -gt 0 ]; then
+              echo "OFFENDER $bin:"
+              otool -L "$bin" | awk 'NR>1 {print $1}' | grep '^/opt/homebrew\|^/usr/local\|^/Users/' || true
+            fi
             BAD=$((BAD + N))
           done
           [ "$BAD" -eq 0 ] || fail "$BAD load commands still reference runner paths"
