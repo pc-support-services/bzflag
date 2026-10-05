@@ -118,22 +118,24 @@ jobs:
           # rewrite the copied lib's load commands and ID right here:
           # the SDL3 dylib's ID is /opt/homebrew/opt/sdl3/lib/
           # libSDL3.0.dylib (brew stows the versioned name as the ID);
-          # rewrite ID + deps to @rpath before any gate can see them.
+          # otool -L prints that ID as the first entry, so SKIP dep line
+          # 1 (the dylib's own ID is not a dependency) and never copy
+          # the lib itself back in as its own dep.
           SDL3LIB="$FW/libSDL3.dylib"
           while read -r dep; do
             case "$dep" in
               @executable_path/*|@rpath/*|/System/*|/usr/lib/*) continue ;;
             esac
             name="$(basename "$dep")"
-            [ -e "$FW/$name" ] || cp -L "$dep" "$FW/$name"
+            if [ "$name" != "$(basename "$SDL3LIB")" ] && [ ! -e "$FW/$name" ]; then
+              cp -L "$dep" "$FW/$name"
+            fi
             install_name_tool -change "$dep" "@rpath/$name" "$SDL3LIB"
-          done < <(otool -L "$SDL3LIB" | awk 'NR>1 {print $1}' | grep '^/opt/homebrew\|^/usr/local\|^/Users/')
-          id=$(otool -D "$SDL3LIB" | awk 'NR==2 {print $1}')
-          case "$id" in
-            ""|@rpath/*|@executable_path/*) ;;
-            *) install_name_tool -id "@rpath/$(basename "$id")" "$SDL3LIB" ;;
-          esac
-          install_name_tool -add_rpath "@executable_path/../Frameworks" "$SDL3LIB" 2>/dev/null || true
+          done < <(otool -L "$SDL3LIB" | awk 'NR>2 {print $1}' | grep '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+          # if a prior step already copied a sibling copy of the same lib
+          # (its versioned name), remove any such stray so the gate sees
+          # exactly one SDL3 dylib with clean load commands
+          rm -f "$FW/libSDL3.0.dylib"
           find "$APP/Contents/Resources/bzflag" -type f -perm -111 -name '*.so' | while read -r plugin; do
             otool -L "$plugin" | awk 'NR>1 {print $1}' | while read -r dep; do
               case "$dep" in
