@@ -32,6 +32,8 @@
 #  include <direct.h>
 #else
 #  include <pwd.h>
+#  include <sys/types.h>
+#  include <sys/stat.h>   /* the __APPLE__ bundle-data probe stats paths */
 #  include <dirent.h>
 #endif /* defined(_WIN32) */
 
@@ -1035,23 +1037,54 @@ int         main(int argc, char** argv)
 
         FileManager::instance().setDataPath(std::string(dataPath));
 #else
-        // It's only checking existence of l10n directory
-        std::string mediadir = DEFAULT_MEDIA_DIR;
-        mediadir += "/l10n";
-        DIR *localedir = opendir(mediadir.c_str());
-        if (localedir != NULL)
+        bool bundleMediaDirSet = false;
+#ifdef __APPLE__
+        /* .app bundle: resolve the data dir from the main bundle's
+         * Resources folder (GetMacOSXDataPath, MacDataPath.cxx). Without
+         * this a bundled app on a clean Mac finds neither ./data (cwd)
+         * nor the compile-time INSTALL_DATA_DIR and exits with
+         * "No fonts found". When a bundle path is found we SKIP the
+         * generic probe below so it cannot overwrite the bundle dir;
+         * SDLMedia::setMediaDirectory validates the dir itself and
+         * falls back stepwise if it is missing.
+         */
+        extern char *GetMacOSXDataPath(void);
+        char *resourceDir = GetMacOSXDataPath();
+        if (resourceDir != NULL)
         {
-            /* found 'data' dir */
+            /* data was staged as Resources/bzflag; also accept a bare
+             * Resources/data layout */
+            std::string bundleData = std::string(resourceDir) + "/bzflag";
+            struct stat st;
+            if (stat(bundleData.c_str(), &st) != 0 || !S_ISDIR(st.st_mode))
+                bundleData = std::string(resourceDir) + "/data";
             BzfMedia *media = PlatformFactory::getMedia();
             if (media)
-                media->setMediaDirectory(DEFAULT_MEDIA_DIR);
-            closedir(localedir);
+                media->setMediaDirectory(bundleData);
+            FileManager::instance().setDataPath(bundleData);
+            bundleMediaDirSet = true;
         }
-        else
+#endif
+        if (!bundleMediaDirSet)
         {
-            /* bah, just set the compile-time path */
-            PlatformFactory::getMedia()->setMediaDirectory(INSTALL_DATA_DIR);
-        }
+            // It's only checking existence of l10n directory
+            std::string mediadir = DEFAULT_MEDIA_DIR;
+            mediadir += "/l10n";
+            DIR *localedir = opendir(mediadir.c_str());
+            if (localedir != NULL)
+            {
+                /* found 'data' dir */
+                BzfMedia *media = PlatformFactory::getMedia();
+                if (media)
+                    media->setMediaDirectory(DEFAULT_MEDIA_DIR);
+                closedir(localedir);
+            }
+            else
+            {
+                /* bah, just set the compile-time path */
+                PlatformFactory::getMedia()->setMediaDirectory(INSTALL_DATA_DIR);
+            }
+        } /* end !bundleMediaDirSet */
 #endif
     }
 

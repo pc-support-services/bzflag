@@ -62,6 +62,7 @@ protected:
     HUDuiControl* createLabel(const char* string,
                               const char* label = NULL);
     virtual float getLeftSide(int width, int height);
+    float getFittingLeftSide(int width, int height, float defaultFraction);
 
 private:
     HelpMenuDefaultKey defaultKey;

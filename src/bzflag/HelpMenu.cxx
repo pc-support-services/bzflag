@@ -20,10 +20,10 @@
 #include "KeyManager.h"
 #include "Flag.h"
 #include "FontManager.h"
+#include "HUDuiLabel.h"
 
 /* local implementation headers */
 #include "HUDDialogStack.h"
-#include "HUDuiLabel.h"
 #include "MainMenu.h"
 
 
@@ -80,6 +80,42 @@ HUDuiControl* HelpMenu::createLabel(const char* string,
 float HelpMenu::getLeftSide(int, int _height)
 {
     return (float)_height / 6.0f;
+}
+
+float HelpMenu::getFittingLeftSide(int _width, int _height, float defaultFraction)
+{
+    /* The right column is drawn left-aligned starting at x = getLeftSide()
+     * and is never wrapped by the HUD.  If the widest line would run off
+     * the right edge of the screen, shift everything left just enough to
+     * fit (bounded below by the base margin), keeping a small right margin.
+     */
+    const float fontSize = (float)_height / 100.0f;
+    FontManager &fm = FontManager::instance();
+    const int fontFace = MainMenu::getFontFace();
+
+    std::vector<HUDuiControl*>& listHUD = getControls();
+    float maxWidth = 0.0f;
+    for (size_t i = 2; i < listHUD.size(); i++)
+    {
+        HUDuiLabel* label = (HUDuiLabel*)listHUD[i];
+        const int face = label->getFontFace() >= 0
+                         ? label->getFontFace() : fontFace;
+        const float size = label->getFontSize();
+        float w = fm.getStrLength(face, size, label->getString());
+        /* the row also draws the left-hand flag label right-aligned against x */
+        w += fm.getStrLength(face, size, label->getLabel() + "99");
+        if (w > maxWidth)
+            maxWidth = w;
+    }
+    if (maxWidth <= 0.0f)
+        return defaultFraction * _width;
+
+    const float rightMargin = fm.getStrLength(fontFace, fontSize, " ");
+    float x = (float)_width - rightMargin - maxWidth;
+    const float defaultX = defaultFraction * _width;
+    if (x < defaultX)
+        x = defaultX;
+    return x;
 }
 
 void HelpMenu::resize(int _width, int _height)
@@ -431,9 +467,9 @@ Help5Menu::Help5Menu() : HelpMenu("Good Flags")
     }
 }
 
-float           Help5Menu::getLeftSide(int _width, int)
+float           Help5Menu::getLeftSide(int _width, int _height)
 {
-    return 0.35f * _width;
+    return getFittingLeftSide(_width, _height, 0.35f);
 }
 
 //
@@ -468,9 +504,9 @@ Help6Menu::Help6Menu() : HelpMenu("Bad Flags")
     }
 }
 
-float Help6Menu::getLeftSide(int _width, int)
+float           Help6Menu::getLeftSide(int _width, int _height)
 {
-    return 0.35f * _width;
+    return getFittingLeftSide(_width, _height, 0.35f);
 }
 
 //

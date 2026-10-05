@@ -101,19 +101,40 @@ jobs:
           codesign --force --deep --sign - "$APP" || true
 
       - name: Verify app bundle
-        # Gate: the dmg must not leave CI still pointing at /opt/homebrew.
+        # Gate: the dmg must not leave CI still pointing at /opt/homebrew,
+        # and the app must find its data/fonts inside the bundle (clean
+        # Mac has no /usr/local/share/bzflag).
         run: |
           set -e
           fail() { echo "BUNDLE CHECK FAILED: $1"; exit 1; }
           EXE="dist/BZFlag.app/Contents/MacOS/bzflag"
           [ -f "$EXE" ] || fail "bzflag binary missing from app bundle"
-          # every non-system load command must now be in-bundle
-          BAD=$(otool -L "$EXE" | awk 'NR>1 {print $1}' | grep -c '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+          # every non-system load command must now be in-bundle — for the
+          # exe AND every bundled dylib/plugin, not just the top-level exe
+          BAD=0
+          for bin in "$EXE" dist/BZFlag.app/Contents/Frameworks/*.dylib \
+                     $(find dist/BZFlag.app/Contents/Resources -type f -perm -111 -name '*.so'); do
+            [ -e "$bin" ] || continue
+            N=$(otool -L "$bin" | awk 'NR>1 {print $1}' | grep -c '^/opt/homebrew\|^/usr/local\|^/Users/' || true)
+            BAD=$((BAD + N))
+          done
           [ "$BAD" -eq 0 ] || fail "$BAD load commands still reference runner paths"
           FW="dist/BZFlag.app/Contents/Frameworks"
           [ -f "$FW/libSDL2-2.0.0.dylib" ] || [ -f "$FW/libSDL2.dylib" ] || fail "SDL2 dylib not bundled"
           [ -e "$FW/libGLEW" ] || ls "$FW"/libGLEW* >/dev/null 2>&1 || fail "GLEW dylib not bundled"
           otool -l "$EXE" | grep -q "LC_LOAD_DYLIB" || fail "no load commands found"
+          # data/fonts must resolve INSIDE the bundle: the client now
+          # probes Contents/Resources/<data> at startup (bzflag.cxx
+          # __APPLE__ branch); CI stages share/bzflag -> Resources/bzflag
+          for d in dist/BZFlag.app/Contents/Resources/bzflag dist/BZFlag.app/Contents/Resources/data; do
+            if [ -d "$d" ]; then
+              [ -d "$d/l10n" ] || [ -d "$d/fonts" ] || fail "$d lacks l10n/fonts"
+              echo "data dir in bundle: $d"
+              FOUND=1
+            fi
+          done
+          [ "${FOUND:-0}" -eq 1 ] || fail "no data dir staged inside Resources (client will exit 'No fonts found' on a clean Mac)"
+          [ -n "$(find dist/BZFlag.app/Contents/Resources -name '*.png' -path '*fonts*' -print -quit)" ] || fail "font PNGs missing from bundle Resources"
           ls -la "$FW"
           echo "bundle check OK: no runner-path load commands remain"
 
@@ -302,11 +323,23 @@ jobs:
         run: |
           set -e
           fail() { echo "PACKAGE CHECK FAILED: $1"; exit 1; }
-          [ -f pkg/bzflag.exe ] || fail "pkg/bzflag.exe missing"
-          [ "$(stat -c%s pkg/bzflag.exe)" -gt 500000 ] || fail "bzflag.exe too small - libtool wrapper shipped?"
+          # all three exes must exist, be real binaries (not libtool
+          # wrappers) and x64 (PE32+), and have their full DLL set staged
+          for exe in bzflag.exe bzfs.exe bzadmin.exe; do
+            [ -f "pkg/$exe" ] || fail "pkg/$exe missing"
+            [ "$(stat -c%s "pkg/$exe")" -gt 500000 ] || fail "$exe too small - libtool wrapper shipped?"
+            strings "pkg/$exe" | grep -qi "temporary wrapper" && fail "libtool wrapper shipped as $exe"
+            file "pkg/$exe" | grep -q "PE32+" || fail "$exe is not PE32+ (x64) as claimed"
+          done
+          # every non-system DLL the exes import must be INSIDE pkg/
+          ldd pkg/bzflag.exe pkg/bzfs.exe pkg/bzadmin.exe \
+            | awk '{print $3}' | grep '^/mingw64/' | sort -u \
+            | while read -r dll; do
+                name="$(basename "$dll")"
+                [ -f "pkg/$name" ] || { echo "PACKAGE CHECK FAILED: $name imported but missing from pkg/"; exit 1; }
+              done
           ldd pkg/bzflag.exe | grep -i "SDL2.dll" || fail "bzflag.exe not linked against SDL2.dll"
           ldd pkg/bzflag.exe | grep -i "glew32.dll" || fail "bzflag.exe not linked against glew32.dll"
-          ! strings pkg/bzflag.exe | grep -qi "temporary wrapper" || fail "libtool wrapper shipped as bzflag.exe"
           [ -f pkg/data/fonts/DejaVuSansCondensedBold_16.png ] || fail "data/fonts missing next to exe"
           ls -la pkg
 
@@ -315,20 +348,14 @@ jobs:
           (cd pkg && zip -qr ../bzflag-windows-x64.zip .)
 
       - name: Build NSIS installer
-        continue-on-error: true
+        # Uses the committed package/win32/nsis/BZFlag.nsi (rewritten
+        # 2026-10 for the flat pkg\ layout). BUILD_64 is defined because
+        # the mingw64 toolchain produces x64 binaries. Failing makensis
+        # must fail the job — no continue-on-error here.
         run: |
-          cat > bzflag.nsi <<'NSI'
-          Name "BZFlag"
-          OutFile "bzflag-windows-x64-setup.exe"
-          InstallDir "$PROGRAMFILES64\BZFlag"
-          Page directory
-          Page instfiles
-          Section
-            SetOutPath "$INSTDIR"
-            File /r pkg\*
-          SectionEnd
-          NSI
-          makensis bzflag.nsi
+          cp package/win32/nsis/BZFlag.nsi .
+          cp package/win32/nsis/side.bmp package/win32/nsis/header.bmp package/win32/nsis/uninstall.ico package/win32/nsis/copying.rtf .
+          makensis -DBUILD_64 BZFlag.nsi
 
       - name: Upload Windows package
         uses: actions/upload-artifact@v4

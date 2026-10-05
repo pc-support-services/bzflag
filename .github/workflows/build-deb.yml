@@ -59,12 +59,19 @@ jobs:
           mkdir -p "$PKGDIR/usr/local"
           cp -a "$PWD/stage/usr/local"/* "$PKGDIR/usr/local/"
 
+          # Ubuntu 24.04 (noble, the runner's own release) did the time_t
+          # transition: libcurl4/libasound2 were rebuilt as
+          # libcurl4t64/libasound2t64 (old names have no candidate on
+          # noble). pulseaudio was NOT rebuilt for the transition:
+          # libpulse0 is still the real noble package and libpulse0t64
+          # does not exist there (verified against the noble Packages
+          # index), so this one keeps the pre-t64 name.
           cat > "$PKGDIR/DEBIAN/control" << EOF
           Package: bzflag
           Version: ${VERSION}
           Architecture: ${{ matrix.arch }}
           Maintainer: ${GITHUB_ACTOR} <${GITHUB_ACTOR}@users.noreply.github.com>
-          Depends: libc6, libstdc++6, libcurl4, libsdl2-2.0-0, libglew2.2, libglu1-mesa | libglu1, libgl1, libncurses6, libasound2, libpulse0, libcares2, zlib1g
+          Depends: libc6, libstdc++6, libcurl4t64, libsdl2-2.0-0, libglew2.2, libglu1-mesa | libglu1, libgl1, libncurses6, libasound2t64, libpulse0, libcares2, zlib1g
           Section: games
           Priority: optional
           Description: 3D multiplayer tank battle game
