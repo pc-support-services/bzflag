@@ -60,7 +60,23 @@ void ServerList::startServerPings(StartupInfo *info)
     // would inherit the exhausted retryCount and only get one attempt.
     retryCount = 0;
 
-    // also try broadcast
+    // LAN discovery stays OFF here.  Opening a UDP broadcast socket to
+    // the private range makes macOS demand (or silently deny) the
+    // per-app Local Network permission the moment the server list
+    // opens, even though the default path is internet play.  A player
+    // joining by hostname/address never needs it, so the broadcast is
+    // only opened when the user actually goes hunting for LAN servers
+    // (openLANDiscovery()).  _shutDown() closes the socket either way.
+    startupInfo = info;
+}
+
+void ServerList::openLANDiscovery()
+{
+    // already open (or nothing to ask for): idempotent
+    if (pingBcastSocket != -1)
+        return;
+    if (startupInfo && startupInfo->listServerURL.size() == 0 && phase == -1)
+        return; // list path disabled: nothing would feed echos anyway
     pingBcastSocket = openBroadcast(BroadcastPort, NULL, &pingBcastAddr);
     if (pingBcastSocket != -1)
         PingPacket::sendRequest(pingBcastSocket, &pingBcastAddr);

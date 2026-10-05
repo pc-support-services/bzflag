@@ -170,6 +170,17 @@ bool ServerMenuDefaultKey::keyPress(const BzfKeyEvent& key)
             }
         }
     }
+    else if (key.ascii == 'l')
+    {
+        if (HUDui::getFocus() && !menu->getFind())
+        {
+            // opt-in LAN discovery: this is the one action that touches
+            // the local network, so macOS's per-app Local Network
+            // permission prompt (if any) fires here, not at launch
+            menu->startLANDiscovery();
+            return true;
+        }
+    }
 
     return MenuDefaultKey::keyPress(key);
 }
@@ -258,7 +269,7 @@ ServerMenu::ServerMenu()
     // short key help
     help1 = new HUDuiLabel;
     help1->setFontFace(MainMenu::getFontFace());
-    help1->setString("Press +/- to add/remove favorites, f to toggle favorites-only list,");
+    help1->setString("Press +/- to add/remove favorites, f to toggle favorites-only list, l to search LAN");
     getControls().push_back(help1);
 
     help2 = new HUDuiLabel;

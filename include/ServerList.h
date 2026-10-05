@@ -73,6 +73,13 @@ private:
     int retryCount;
     static const int RetryInterval = 5;   // seconds between retries
     static const int MaxRetries = 6;     // give up after this many attempts
+
+public:
+    // opt-in LAN discovery: opens the UDP broadcast socket for finding
+    // local servers.  Deferred here so the normal (internet) flow never
+    // touches the private-address scope that macOS gates behind its
+    // per-app Local Network permission.
+    void openLANDiscovery();
 };
 
 #endif /* __SERVERLIST_H__ */

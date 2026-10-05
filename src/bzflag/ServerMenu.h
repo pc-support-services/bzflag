@@ -81,6 +81,10 @@ public:
 
     void toggleFavView();
     void setFav(bool);
+    void startLANDiscovery()
+    {
+        realServerList.openLANDiscovery();
+    }
 
     static void playingCB(void*);
 
