@@ -136,6 +136,14 @@ jobs:
           # (its versioned name), remove any such stray so the gate sees
           # exactly one SDL3 dylib with clean load commands
           rm -f "$FW/libSDL3.0.dylib"
+          # the ID (otool -D line 2) is also listed by `otool -L` line 2,
+          # which the gate greps — rewrite it to match @rpath/<file>, not
+          # the brew path, or the closure gate fails on this file alone
+          id="$(otool -D "$SDL3LIB" | awk 'NR==2 {print $1}')"
+          case "$id" in
+            ""|@rpath/*|@executable_path/*|*"$FW"*) ;;
+            *) install_name_tool -id "@rpath/$(basename "$SDL3LIB")" "$SDL3LIB" ;;
+          esac
           find "$APP/Contents/Resources/bzflag" -type f -perm -111 -name '*.so' | while read -r plugin; do
             otool -L "$plugin" | awk 'NR>1 {print $1}' | while read -r dep; do
               case "$dep" in
