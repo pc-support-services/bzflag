@@ -119,7 +119,11 @@ ServerLink::ServerLink(const Address& serverAddress, int port) :
     // open connection to server.  first connect to given port.
     // don't wait too long.
     int query = socket(AF_INET, SOCK_STREAM, 0);
-    if (query < 0) return;
+    if (query < 0)
+    {
+        logDebugMessage(1,"CONNECT:socket() failed, errno=%d (%s)\n", getErrno(), strerror(getErrno()));
+        return;
+    }
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -143,6 +147,7 @@ ServerLink::ServerLink(const Address& serverAddress, int port) :
     fdMax = query;
     if (BzfNetwork::setNonBlocking(query) < 0)
     {
+        logDebugMessage(1,"CONNECT:setNonBlocking failed, errno=%d (%s)\n", getErrno(), strerror(getErrno()));
         close(query);
         return;
     }
@@ -150,6 +155,7 @@ ServerLink::ServerLink(const Address& serverAddress, int port) :
     {
         if (getErrno() != EINPROGRESS)
         {
+            logDebugMessage(1,"CONNECT:connect() failed immediately, errno=%d (%s)\n", getErrno(), strerror(getErrno()));
             close(query);
             return;
         }
@@ -160,6 +166,7 @@ ServerLink::ServerLink(const Address& serverAddress, int port) :
         nfound = select(fdMax + 1, NULL, (fd_set*)&write_set, NULL, &timeout);
         if (nfound <= 0)
         {
+            logDebugMessage(1,"CONNECT:select on connect %s after %d\n", nfound == 0 ? "timed out" : "failed", getErrno());
             close(query);
             return;
         }
@@ -168,11 +175,13 @@ ServerLink::ServerLink(const Address& serverAddress, int port) :
         if (getsockopt(query, SOL_SOCKET, SO_ERROR, &connectError, &errorLen)
                 < 0)
         {
+            logDebugMessage(1,"CONNECT:getsockopt(SO_ERROR) failed, errno=%d (%s)\n", getErrno(), strerror(getErrno()));
             close(query);
             return;
         }
         if (connectError != 0)
         {
+            logDebugMessage(1,"CONNECT:SO_ERROR=%d (%s)\n", connectError, strerror(connectError));
             close(query);
             return;
         }
