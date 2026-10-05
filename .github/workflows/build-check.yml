@@ -89,7 +89,7 @@ jobs:
             # rewrite the dylib's own install ID (LC_ID_DYLIB) away from
             # the brew path — the gate treats any remaining /opt/... or
             # /usr/local reference as a failure, ID included
-            id=$(otool -D "$lib" | awk 'NR>2 {print $1}')
+            id=$(otool -D "$lib" | awk 'NR==2 {print $1}')
             case "$id" in
               ""|@rpath/*|@executable_path/*) ;;
               *) install_name_tool -id "@rpath/$(basename "$id")" "$lib" 2>/dev/null || true ;;
