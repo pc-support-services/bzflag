@@ -137,6 +137,12 @@ jobs:
             <key>CFBundleShortVersionString</key><string>2.4</string>
             <key>LSMinimumSystemVersion</key><string>11.0</string>
             <key>NSHighResolutionCapable</key><true/>
+            <key>NSLocalNetworkUsageDescription</key><string>BZFlag connects to game servers on your local network.</string>
+            <key>NSBonjourServices</key>
+            <array>
+              <string>_bzflag._tcp</string>
+              <string>_bzflag._udp</string>
+            </array>
           </dict>
           </plist>
           PLIST
