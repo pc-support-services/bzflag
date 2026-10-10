@@ -1060,6 +1060,17 @@ void SceneRenderer::renderScene(bool UNUSED(_lastFrame), bool UNUSED(_sameFrame)
             // now turn on the remaining lights
             for (i = 0; i < dynamicLights; i++)
                 OpenGLLight::enableLight(i + reservedLights, true);
+
+            // mirror the enabled-light set for the GLSL lighting shader
+            // (worldShader groups + tanks read this instead of querying
+            // glEnable state GLSL cannot access). bit 0 = sun/moon
+            // (GL_LIGHT0), bits 1..n = dynamic lights.
+            int shaderMask = 0;
+            if (sunOrMoonUp)
+                shaderMask |= 1;
+            for (i = 0; i < dynamicLights; i++)
+                shaderMask |= (1 << (i + 1));
+            TankLightingShader::instance().setLightMask(shaderMask);
         }
 
         frustum.executeProjection();

@@ -28,6 +28,9 @@
 #include "TextureManager.h"
 #include "TextureMatrix.h"
 #include "OpenGLMaterial.h"
+#include "StateDatabase.h"
+#include "BZDBCache.h"
+#include "TankLightingShader.h"
 #include "RenderNode.h"
 
 
@@ -953,8 +956,31 @@ void            SortedGState::clearRenderNodes()
 
 void            SortedGState::render()
 {
+    // WORLD SHADER LIGHTING (GL backlog item 4): the tank GLSL path made
+    // general. Lit opaque groups (hasMaterial => GL_LIGHTING+COLOR_MATERIAL
+    // in setOpenGLState) render with TankLightingShader: per-pixel
+    // Blinn-Phong + fog + sun shadow map instead of per-vertex Gouraud.
+    // The shader reads the same fixed-function state (gl_LightSource,
+    // gl_FrontMaterial, gl_Fog), so setOpenGLState below stays untouched
+    // and the switch is invisible to the node renderers. Alpha-blended /
+    // sorted nodes draw through the orderedList instead - left on the
+    // fixed-function path (blend-critical pass, per sorting rule).
+    const bool useWorldShader = BZDB.isTrue("worldShader")
+                                && BZDBCache::lighting;
     for (SortedGState* scan = list; scan; scan = scan->next)
-        scan->nodes.render();
+    {
+        const bool shaderGroup = useWorldShader
+                                 && scan->state.hasMaterial
+                                 && TankLightingShader::instance().isActive();
+        if (shaderGroup)
+        {
+            TankLightingShader::instance().useShader(true);
+            scan->nodes.render();
+            TankLightingShader::instance().useShader(false);
+        }
+        else
+            scan->nodes.render();
+    }
 }
 
 //

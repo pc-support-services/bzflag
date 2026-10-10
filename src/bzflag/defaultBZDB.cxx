@@ -115,6 +115,7 @@ DefaultDBItem defaultDBItems[] =
     { "radarLodScale",        "1.0",          true,   StateDatabase::ReadWrite,   NULL },
     { "meshVBO",          "1",            true,   StateDatabase::ReadWrite,   NULL },
     { "bgVBO",            "0",            true,   StateDatabase::ReadWrite,   NULL },
+    { "worldShader",      "0",            true,   StateDatabase::ReadWrite,   NULL },
     { "stencilShadows",       "0",            true,   StateDatabase::ReadWrite,   NULL },
     { "shadowAlpha",      "0.5",          true,   StateDatabase::ReadWrite,   NULL },
     { "shadowMapSize",    "2048",         true,   StateDatabase::ReadWrite,   NULL },
