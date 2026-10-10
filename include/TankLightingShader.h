@@ -54,9 +54,13 @@ public:
     // attempt. returns true if the shader path is active.
     bool init();
 
-    // true if the GLSL path is active (init() succeeded)
-    bool isActive() const
+    // true if the GLSL path is active (init() succeeded). Lazes the
+    // compile/link attempt to the first call -- always with a current
+    // GL context, since callers only reach this during scene rendering.
+    bool isActive()
     {
+        if (!triedInit)
+            init();
         return active;
     }
 

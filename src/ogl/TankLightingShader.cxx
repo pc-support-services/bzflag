@@ -52,6 +52,7 @@ static const char* fragmentShaderSource =
     "#version 120\n"
     "uniform int u_fogMode;      // -1 = off, 0 = exp2, 1 = linear, 2 = exp\n"
     "uniform int u_lightMask;    // bit i = GL_LIGHT0+i enabled\n"
+    "uniform sampler2D textureUnit0; // the material texture bound at unit 0\n"
     "// sun shadow map (stage C)\n"
     "uniform bool u_shadows;         // shadow mapping active\n"
     "uniform sampler2D u_shadowMap;  // sun-space depth\n"
@@ -92,16 +93,20 @@ static const char* fragmentShaderSource =
     "    if (!gl_FrontFacing)\n"
     "        normal = -normal;   // two-sided like the fixed pipeline\n"
     "    vec4 baseColor = gl_Color;\n"
-    "    baseColor *= texture2D(gl_Texture[0], gl_TexCoord[0]);\n"
+    "    // no dynamic sampler in GLSL 1.20: texture unit 0 is the only\n"
+    "    // material binding this path is used with (treads use their own\n"
+    "    // state; textures bind unit 0 in setOpenGLState before the draw)\n"
+    "    baseColor *= texture2D(textureUnit0, gl_TexCoord[0].xy);\n"
     "\n"
     "    vec3 viewDir = normalize(-v_eyePos);\n"
     "    vec3 lit = gl_LightModel.ambient.rgb * baseColor.rgb;\n"
     "    lit += gl_FrontMaterial.emission.rgb;\n"
     "\n"
-    "    // per-light diffuse + specular (sun/moon is light 0)\n"
+    "    // per-light diffuse + specular (sun/moon is light 0).\n"
+    "    // GLSL 1.20 has no bit ops: decode u_lightMask arithmetically.\n"
     "    for (int i = 0; i < 8; i++)\n"
     "    {\n"
-    "        if ((u_lightMask & (1 << i)) == 0)\n"
+    "        if (mod(floor(u_lightMask / pow(2.0, float(i))), 2.0) < 1.0)\n"
     "            continue;\n"
     "        vec3 L;\n"
     "        float atten = 1.0;\n"
@@ -245,6 +250,13 @@ bool TankLightingShader::init()
     unifShadowMap = glGetUniformLocation(program, "u_shadowMap");
     unifShadowProj  = glGetUniformLocation(program, "u_shadowProj");
     unifShadowTexel = glGetUniformLocation(program, "u_shadowTexel");
+
+    // material textures always bind unit 0 in this renderer
+    glUseProgram(program);
+    const GLint tex0 = glGetUniformLocation(program, "textureUnit0");
+    if (tex0 != -1)
+        glUniform1i(tex0, 0);
+    glUseProgram(0);
 
     logDebugMessage(2, "TankLightingShader: GLSL per-pixel tank lighting active\n");
     active = true;

@@ -1167,6 +1167,8 @@ static bool setupMapFog()
     {
         glDisable(GL_FOG);
         glHint(GL_FOG_HINT, GL_FASTEST);
+        // mirror "fog off" for the GLSL lighting shader
+        TankLightingShader::instance().setFogMode(-1);
         return false;
     }
     RENDERER.setFogActive(true);
@@ -1205,6 +1207,11 @@ static bool setupMapFog()
 
     // setup GL fog
     glFogi(GL_FOG_MODE, fogMode);
+    // mirror the fog mode for the GLSL lighting shader:
+    // GL_EXP2 -> 0, GL_LINEAR -> 1, GL_EXP -> 2 (matches the shader's
+    // u_fogMode encoding; TankLightingShader.cxx fragment source)
+    TankLightingShader::instance().setFogMode(
+        (fogMode == GL_EXP2) ? 0 : (fogMode == GL_LINEAR) ? 1 : 2);
     glFogf(GL_FOG_DENSITY, fogDensity);
     glFogf(GL_FOG_START, fogStart);
     glFogf(GL_FOG_END, fogEnd);
