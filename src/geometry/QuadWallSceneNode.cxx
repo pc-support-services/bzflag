@@ -108,47 +108,6 @@ QuadWallSceneNode::Geometry::~Geometry()
     // do nothing
 }
 
-#define RENDER(_e)                          \
-  for (int k = 0, t = 0; t < dt; t++) {                 \
-    static GLBatch batch0;                      \
-    batch0.begin(GL_TRIANGLE_STRIP);                \
-    for (int s = 0; s < dsq; k += 4, s++) {             \
-      _e(k+ds+1);                           \
-      _e(k);                                \
-      _e(k+ds+2);                           \
-      _e(k+1);                              \
-      _e(k+ds+3);                           \
-      _e(k+2);                              \
-      _e(k+ds+4);                           \
-      _e(k+3);                              \
-    }                                   \
-    switch (dsr) {                          \
-      case 3:                               \
-    _e(k+ds+1);                         \
-    _e(k);                              \
-    k++;                                \
-    /* fall through */                      \
-      case 2:                               \
-    _e(k+ds+1);                         \
-    _e(k);                              \
-    k++;                                \
-    /* fall through */                      \
-      case 1:                               \
-    _e(k+ds+1);                         \
-    _e(k);                              \
-    k++;                                \
-    /* fall through */                      \
-      case 0:                               \
-    /* don't forget right edge of last quad on row */       \
-    _e(k+ds+1);                         \
-    _e(k);                              \
-    k++;                                \
-    }                                   \
-    batch0.end();                           \
-  }
-#define EMITV(_i)   batch0.vertex3fv(vertex[_i])
-#define EMITVT(_i)  batch0.texCoord2fv(uv[_i]); batch0.vertex3fv(vertex[_i])
-
 const GLfloat* QuadWallSceneNode::Geometry::getPosition() const
 {
     return wall->getSphere();
@@ -181,12 +140,60 @@ void            QuadWallSceneNode::Geometry::renderShadow()
 
 void            QuadWallSceneNode::Geometry::drawV() const
 {
-    RENDER(EMITV)
+    const int pitch = ds + 1;   // vertex grid pitch (uCount+1)
+    static GLBatch batch0;
+    batch0.begin(GL_TRIANGLES);
+    for (int t = 0; t < dt; t++)
+    {
+        for (int c = 0; c < ds; c++)
+        {
+            // quad between rows t / t+1, cols c / c+1.
+            // Winding identical to the legacy per-row strip emission:
+            // tris (A,B,C) + (B,D,C), decoded and verified against the
+            // old RENDER macro's exact strip order.
+            const int A = (t + 1) * pitch + c;
+            const int B = t * pitch + c;
+            const int C = (t + 1) * pitch + (c + 1);
+            const int D = t * pitch + (c + 1);
+            batch0.vertex3fv(vertex[A]);
+            batch0.vertex3fv(vertex[B]);
+            batch0.vertex3fv(vertex[C]);
+            batch0.vertex3fv(vertex[B]);
+            batch0.vertex3fv(vertex[D]);
+            batch0.vertex3fv(vertex[C]);
+        }
+    }
+    batch0.end();
 }
 
 void            QuadWallSceneNode::Geometry::drawVT() const
 {
-    RENDER(EMITVT)
+    const int pitch = ds + 1;   // vertex grid pitch (uCount+1)
+    static GLBatch batch1;
+    batch1.begin(GL_TRIANGLES);
+    for (int t = 0; t < dt; t++)
+    {
+        for (int c = 0; c < ds; c++)
+        {
+            const int A = (t + 1) * pitch + c;
+            const int B = t * pitch + c;
+            const int C = (t + 1) * pitch + (c + 1);
+            const int D = t * pitch + (c + 1);
+            batch1.texCoord2fv(uv[A]);
+            batch1.vertex3fv(vertex[A]);
+            batch1.texCoord2fv(uv[B]);
+            batch1.vertex3fv(vertex[B]);
+            batch1.texCoord2fv(uv[C]);
+            batch1.vertex3fv(vertex[C]);
+            batch1.texCoord2fv(uv[B]);
+            batch1.vertex3fv(vertex[B]);
+            batch1.texCoord2fv(uv[D]);
+            batch1.vertex3fv(vertex[D]);
+            batch1.texCoord2fv(uv[C]);
+            batch1.vertex3fv(vertex[C]);
+        }
+    }
+    batch1.end();
 }
 
 const GLfloat*      QuadWallSceneNode::Geometry::getVertex(int i) const

@@ -1031,7 +1031,20 @@ void RadarRenderer::renderBoxPyrMesh()
         }
     }
 
-    // draw box buildings.
+    // BATCHED: the per-obstacle GLBatch begin/end here used to issue one
+    // draw per box/pyramid/mesh face (measured: 335K flushes per second on
+    // a heavy public map - the whole flat frame cost on llvmpipe + real
+    // GPUs alike). Accumulate everything per pass into ONE batch with
+    // per-vertex colors (GLBatch carries csize=4 color arrays) and issue
+    // a single flush per pass. Visual result identical: same per-obstacle
+    // colors/alphas, now as vertex attributes.
+
+    // draw box + pyramid buildings as one triangle batch
+    static GLBatch batch;
+    batch.begin(GL_TRIANGLES);
+
+    // helper lambda-like inline: emit a rotated radar quad as 2 triangles
+    // (order matches the old strip: a,b,c,d => tris a,b,c and c,b,d)
     const ObstacleList& boxes = OBSTACLEMGR.getBoxes();
     int count = boxes.size();
     for (i = 0; i < count; i++)
@@ -1042,22 +1055,26 @@ void RadarRenderer::renderBoxPyrMesh()
         const float z = box.getPosition()[2];
         const float bh = box.getHeight();
         const float cs = colorScale(z, bh);
-        glColor4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
+        const float ca = 0.25f * cs, cb = 0.5f * cs, cc = 0.5f * cs, calpha = transScale(z, bh);
         const float c = cosf(box.getRotation());
         const float s = sinf(box.getRotation());
         const float wx = c * box.getWidth(), wy = s * box.getWidth();
         const float hx = -s * box.getBreadth(), hy = c * box.getBreadth();
         const float* pos = box.getPosition();
-        static GLBatch batch;
-        batch.begin(GL_TRIANGLE_STRIP);
-        batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-        batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-        batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-        batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-        batch.end();
+        const float ax = pos[0] - wx - hx, ay = pos[1] - wy - hy;
+        const float bx = pos[0] + wx - hx, by = pos[1] + wy - hy;
+        const float cx = pos[0] - wx + hx, cy = pos[1] - wy + hy;
+        const float dx = pos[0] + wx + hx, dy = pos[1] + wy + hy;
+        batch.color4f(ca, cb, cc, calpha);
+        batch.vertex2f(ax, ay);
+        batch.vertex2f(bx, by);
+        batch.vertex2f(cx, cy);
+        batch.color4f(ca, cb, cc, calpha);
+        batch.vertex2f(cx, cy);
+        batch.vertex2f(bx, by);
+        batch.vertex2f(dx, dy);
     }
 
-    // draw pyramid buildings
     const ObstacleList& pyramids = OBSTACLEMGR.getPyrs();
     count = pyramids.size();
     for (i = 0; i < count; i++)
@@ -1066,28 +1083,36 @@ void RadarRenderer::renderBoxPyrMesh()
         const float z = pyr.getPosition()[2];
         const float bh = pyr.getHeight();
         const float cs = colorScale(z, bh);
-        glColor4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
+        const float ca = 0.25f * cs, cb = 0.5f * cs, cc = 0.5f * cs, calpha = transScale(z, bh);
         const float c = cosf(pyr.getRotation());
         const float s = sinf(pyr.getRotation());
         const float wx = c * pyr.getWidth(), wy = s * pyr.getWidth();
         const float hx = -s * pyr.getBreadth(), hy = c * pyr.getBreadth();
         const float* pos = pyr.getPosition();
-        static GLBatch batch;
-        batch.begin(GL_TRIANGLE_STRIP);
-        batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-        batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-        batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-        batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-        batch.end();
+        const float ax = pos[0] - wx - hx, ay = pos[1] - wy - hy;
+        const float bx = pos[0] + wx - hx, by = pos[1] + wy - hy;
+        const float cx = pos[0] - wx + hx, cy = pos[1] - wy + hy;
+        const float dx = pos[0] + wx + hx, dy = pos[1] + wy + hy;
+        batch.color4f(ca, cb, cc, calpha);
+        batch.vertex2f(ax, ay);
+        batch.vertex2f(bx, by);
+        batch.vertex2f(cx, cy);
+        batch.color4f(ca, cb, cc, calpha);
+        batch.vertex2f(cx, cy);
+        batch.vertex2f(bx, by);
+        batch.vertex2f(dx, dy);
     }
+    batch.end();
 
-    // draw mesh obstacles
+    // draw mesh obstacles as one triangle batch (fans re-tessellated to
+    // GL_TRIANGLES: v0, v[i-1], v[i])
     if (smooth)
         glEnable(GL_POLYGON_SMOOTH);
     if (!enhanced)
         glDisable(GL_CULL_FACE);
     const ObstacleList& meshes = OBSTACLEMGR.getMeshes();
     count = meshes.size();
+    batch.begin(GL_TRIANGLES);
     for (i = 0; i < count; i++)
     {
         const MeshObstacle* mesh = (const MeshObstacle*) meshes[i];
@@ -1117,21 +1142,23 @@ void RadarRenderer::renderBoxPyrMesh()
             // draw death faces with a soupcon of red
             const PhysicsDriver* phydrv = PHYDRVMGR.getDriver(face->getPhysicsDriver());
             if ((phydrv != NULL) && phydrv->getIsDeath())
-                glColor4f(0.75f * cs, 0.25f * cs, 0.25f * cs, transScale(z, bh));
+                batch.color4f(0.75f * cs, 0.25f * cs, 0.25f * cs, transScale(z, bh));
             else
-                glColor4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
-            // draw the face as a triangle fan
+                batch.color4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
+            // fan => triangles
             int vertexCount = face->getVertexCount();
-            static GLBatch batch;
-            batch.begin(GL_TRIANGLE_FAN);
-            for (int v = 0; v < vertexCount; v++)
+            for (int v = 2; v < vertexCount; v++)
             {
-                const float* pos = face->getVertex(v);
-                batch.vertex2f(pos[0], pos[1]);
+                const float* p0 = face->getVertex(0);
+                const float* pa = face->getVertex(v - 1);
+                const float* pb = face->getVertex(v);
+                batch.vertex2f(p0[0], p0[1]);
+                batch.vertex2f(pa[0], pa[1]);
+                batch.vertex2f(pb[0], pb[1]);
             }
-            batch.end();
         }
     }
+    batch.end();
     if (!enhanced)
         glEnable(GL_CULL_FACE);
     if (smooth)
@@ -1145,8 +1172,8 @@ void RadarRenderer::renderBoxPyrMesh()
     if (smooth)
     {
         glEnable(GL_BLEND); // NOTE: revert from the enhanced setting
+        batch.begin(GL_LINES);
         count = boxes.size();
-        static GLBatch batch;
         for (i = 0; i < count; i++)
         {
             const BoxBuilding& box = *((const BoxBuilding*) boxes[i]);
@@ -1155,18 +1182,25 @@ void RadarRenderer::renderBoxPyrMesh()
             const float z = box.getPosition()[2];
             const float bh = box.getHeight();
             const float cs = colorScale(z, bh);
-            glColor4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
+            const float ca = 0.25f * cs, cb = 0.5f * cs, cc = 0.5f * cs, calpha = transScale(z, bh);
             const float c = cosf(box.getRotation());
             const float s = sinf(box.getRotation());
             const float wx = c * box.getWidth(), wy = s * box.getWidth();
             const float hx = -s * box.getBreadth(), hy = c * box.getBreadth();
             const float* pos = box.getPosition();
-            batch.begin(GL_LINE_LOOP);
-            batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-            batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-            batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-            batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-            batch.end();
+            const float ax = pos[0] - wx - hx, ay = pos[1] - wy - hy;
+            const float bx = pos[0] + wx - hx, by = pos[1] + wy - hy;
+            const float cx = pos[0] + wx + hx, cy = pos[1] + wy + hy;
+            const float dx = pos[0] - wx + hx, dy = pos[1] - wy + hy;
+            batch.color4f(ca, cb, cc, calpha);
+            batch.vertex2f(ax, ay);
+            batch.vertex2f(bx, by);
+            batch.vertex2f(bx, by);
+            batch.vertex2f(cx, cy);
+            batch.vertex2f(cx, cy);
+            batch.vertex2f(dx, dy);
+            batch.vertex2f(dx, dy);
+            batch.vertex2f(ax, ay);
         }
 
         count = pyramids.size();
@@ -1176,19 +1210,27 @@ void RadarRenderer::renderBoxPyrMesh()
             const float z = pyr.getPosition()[2];
             const float bh = pyr.getHeight();
             const float cs = colorScale(z, bh);
-            glColor4f(0.25f * cs, 0.5f * cs, 0.5f * cs, transScale(z, bh));
+            const float ca = 0.25f * cs, cb = 0.5f * cs, cc = 0.5f * cs, calpha = transScale(z, bh);
             const float c = cosf(pyr.getRotation());
             const float s = sinf(pyr.getRotation());
             const float wx = c * pyr.getWidth(), wy = s * pyr.getWidth();
             const float hx = -s * pyr.getBreadth(), hy = c * pyr.getBreadth();
             const float* pos = pyr.getPosition();
-            batch.begin(GL_LINE_LOOP);
-            batch.vertex2f(pos[0] - wx - hx, pos[1] - wy - hy);
-            batch.vertex2f(pos[0] + wx - hx, pos[1] + wy - hy);
-            batch.vertex2f(pos[0] + wx + hx, pos[1] + wy + hy);
-            batch.vertex2f(pos[0] - wx + hx, pos[1] - wy + hy);
-            batch.end();
+            const float ax = pos[0] - wx - hx, ay = pos[1] - wy - hy;
+            const float bx = pos[0] + wx - hx, by = pos[1] + wy - hy;
+            const float cx = pos[0] + wx + hx, cy = pos[1] + wy + hy;
+            const float dx = pos[0] - wx + hx, dy = pos[1] - wy + hy;
+            batch.color4f(ca, cb, cc, calpha);
+            batch.vertex2f(ax, ay);
+            batch.vertex2f(bx, by);
+            batch.vertex2f(bx, by);
+            batch.vertex2f(cx, cy);
+            batch.vertex2f(cx, cy);
+            batch.vertex2f(dx, dy);
+            batch.vertex2f(dx, dy);
+            batch.vertex2f(ax, ay);
         }
+        batch.end();
     }
 
     return;

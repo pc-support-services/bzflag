@@ -15,9 +15,11 @@
 
 // system headers
 #include "bzfgl.h"
+#include "TimeKeeper.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <map>
 
 
 GLBatch::GLBatch() :
@@ -214,13 +216,35 @@ void GLBatch::end()
     if (dbgEnabled && verts.size() >= 12)
     {
         static int dbgCount = 0;
-        if (dbgCount++ < 400)
+        if (dbgCount++ < 4000)
             fprintf(stderr,
-                    "GLBatch mode=%d count=%d csize=%d cols=%d tex=%d norm=%d color=%.2f,%.2f,%.2f,%.2f v=(%.1f,%.1f)-(%.1f,%.1f)\n",
-                    (int)mode, (int)verts.size() / 3, csize, (int)cols.size(),
-                    (int)useTex, (int)useNorm,
-                    curColor[0], curColor[1], curColor[2], curColor[3],
-                    verts[0], verts[1], verts[3], verts[4]);
+                    "GLBatch mode=%d count=%d v0=(%.1f,%.1f,%.1f)\n",
+                    (int)mode, (int)verts.size() / 3, verts[0], verts[1], verts[2]);
+    }
+    if (dbgEnabled)
+    {
+        // per-frame flush counter: prints one line per second worth of
+        // frames so a profile can read batch pressure per frame.
+        // Samples return addresses to name the call sites.
+        static int flushCount = 0;
+        static double lastPrint = 0.0;
+        static std::map<void*, int> callerByAddr;
+        flushCount++;
+        void* ra = __builtin_return_address(0);
+        callerByAddr[ra]++;
+        const double now = TimeKeeper::getTick().getSeconds();
+        if (lastPrint <= 0.0)
+            lastPrint = now;
+        else if (now - lastPrint >= 1.0)
+        {
+            fprintf(stderr, "GLBatch flushes in last second: %d\n", flushCount);
+            std::map<void*, int>::const_iterator it;
+            for (it = callerByAddr.begin(); it != callerByAddr.end(); ++it)
+                fprintf(stderr, "  caller %p: %d\n", it->first, it->second);
+            callerByAddr.clear();
+            flushCount = 0;
+            lastPrint = now;
+        }
     }
 
     const GLfloat* vptr = &verts[0];
