@@ -47,9 +47,13 @@ jobs:
       - name: Check binary architecture
         # Fail if the build is not the matrix's native arch (an
         # arm64-signed x86_64 dmg silently serves Rosetta to users).
+        # file(1) wording varies by release ("executable"/"x86_64" vs
+        # "executable x86_64-style"/"arm64"), so just match the arch token.
         run: |
           set -e
-          file src/bzflag/bzflag | grep "mach-o" | grep -q "${{ matrix.arch }}" \
+          file src/bzflag/bzflag | grep -q -e "arm64" -e "x86_64" -e "Mach-O universal" \
+            || { echo "UNRECOGNIZED BINARY"; file src/bzflag/bzflag; exit 1; }
+          file src/bzflag/bzflag | grep -q "${{ matrix.arch }}" \
             || { echo "ARCH MISMATCH: expected ${{ matrix.arch }}"; file src/bzflag/bzflag; exit 1; }
 
       - name: Stage install tree
