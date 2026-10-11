@@ -16,6 +16,9 @@ jobs:
     # matrix covers Apple Silicon (arm64) AND Intel (x86_64): a single
     # arm64 dmg does not launch on Intel Macs (bad CPU type in exec).
     strategy:
+      # do NOT fail-fast: an Intel-leg failure (billing, capacity) must
+      # not cancel the arm64 dmg build
+      fail-fast: false
       matrix:
         include:
           - arch: arm64
