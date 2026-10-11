@@ -24,7 +24,7 @@ jobs:
           - arch: arm64
             runner: macos-26
           - arch: x86_64
-            runner: macos-15-large
+            runner: macos-15-intel
     name: macos (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     continue-on-error: false
