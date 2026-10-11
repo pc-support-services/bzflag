@@ -40,7 +40,6 @@ jobs:
         run: |
           export CPPFLAGS="-I$(brew --prefix)/include -I$(brew --prefix c-ares)/include"
           export LDFLAGS="-L$(brew --prefix)/lib -L$(brew --prefix c-ares)/lib"
-          ls "$(xcrun -sdk macosx --show-sdk-path)/usr/include/system/libsystem_info.tbd" >/dev/null
           ./autogen.sh
           ./configure
           make -j2
