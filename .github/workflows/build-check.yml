@@ -49,8 +49,8 @@ jobs:
         # arm64-signed x86_64 dmg silently serves Rosetta to users).
         run: |
           set -e
-          file pkg/usr/local/bin/bzflag | grep "mach-o" | grep -q "${{ matrix.arch }}" \
-            || { echo "ARCH MISMATCH: expected ${{ matrix.arch }}"; file pkg/usr/local/bin/bzflag; exit 1; }
+          file src/bzflag/bzflag | grep "mach-o" | grep -q "${{ matrix.arch }}" \
+            || { echo "ARCH MISMATCH: expected ${{ matrix.arch }}"; file src/bzflag/bzflag; exit 1; }
 
       - name: Stage install tree
         run: |
