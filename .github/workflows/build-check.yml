@@ -13,7 +13,17 @@ permissions:
 
 jobs:
   macos:
-    runs-on: macos-14
+    # matrix covers Apple Silicon (arm64) AND Intel (x86_64): a single
+    # arm64 dmg does not launch on Intel Macs (bad CPU type in exec).
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-26
+          - arch: x86_64
+            runner: macos-15-large
+    name: macos (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     continue-on-error: false
     steps:
       - name: Checkout
@@ -27,9 +37,18 @@ jobs:
         run: |
           export CPPFLAGS="-I$(brew --prefix)/include -I$(brew --prefix c-ares)/include"
           export LDFLAGS="-L$(brew --prefix)/lib -L$(brew --prefix c-ares)/lib"
+          ls "$(xcrun -sdk macosx --show-sdk-path)/usr/include/system/libsystem_info.tbd" >/dev/null
           ./autogen.sh
           ./configure
           make -j2
+
+      - name: Check binary architecture
+        # Fail if the build is not the matrix's native arch (an
+        # arm64-signed x86_64 dmg silently serves Rosetta to users).
+        run: |
+          set -e
+          file pkg/usr/local/bin/bzflag | grep "mach-o" | grep -q "${{ matrix.arch }}" \
+            || { echo "ARCH MISMATCH: expected ${{ matrix.arch }}"; file pkg/usr/local/bin/bzflag; exit 1; }
 
       - name: Stage install tree
         run: |
@@ -228,20 +247,20 @@ jobs:
       - name: Build DMG
         run: |
           hdiutil detach "/Volumes/BZFlag" -force || true
-          hdiutil create -volname BZFlag -srcfolder "$PWD/dist/BZFlag.app" -ov -format UDZO bzflag-macos.dmg
+          hdiutil create -volname BZFlag -srcfolder "$PWD/dist/BZFlag.app" -ov -format UDZO "bzflag-macos-${{ matrix.arch }}.dmg"
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
-          name: bzflag-macos-dmg
-          path: bzflag-macos.dmg
+          name: bzflag-macos-dmg-${{ matrix.arch }}
+          path: "bzflag-macos-${{ matrix.arch }}.dmg"
           if-no-files-found: error
 
       - name: Attach DMG to release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: bzflag-macos.dmg
+          files: "bzflag-macos-${{ matrix.arch }}.dmg"
 
   windows:
     runs-on: windows-latest
