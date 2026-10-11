@@ -64,6 +64,9 @@ jobs:
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
           cp pkg/usr/local/bin/bzflag "$APP/Contents/MacOS/bzflag"
           cp -R pkg/usr/local/share/bzflag "$APP/Contents/Resources/bzflag"
+          # app icon: without CFBundleIconFile the app gets the generic
+          # blank-executable icon in Finder/Dock (user-reported on M1)
+          cp package/macos/bzflag.icns "$APP/Contents/Resources/bzflag.icns"
           # Bundle dylib deps and rewrite load commands. Without this the
           # binary keeps absolute /opt/homebrew/... references that only
           # exist on the CI runner and dyld refuses to launch anywhere else.
@@ -186,6 +189,7 @@ jobs:
             <key>CFBundleExecutable</key><string>bzflag</string>
             <key>CFBundleIdentifier</key><string>org.bzflag.bzflag</string>
             <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleIconFile</key><string>bzflag</string>
             <key>CFBundleVersion</key><string>2.4</string>
             <key>CFBundleShortVersionString</key><string>2.4</string>
             <key>LSMinimumSystemVersion</key><string>11.0</string>
@@ -226,6 +230,9 @@ jobs:
           [ "$BAD" -eq 0 ] || fail "$BAD load commands still reference runner paths"
           FW="dist/BZFlag.app/Contents/Frameworks"
           [ -f "$FW/libSDL2-2.0.0.dylib" ] || [ -f "$FW/libSDL2.dylib" ] || fail "SDL2 dylib not bundled"
+          # app icon must exist inside Resources (blank exec icon otherwise)
+          [ -f "dist/BZFlag.app/Contents/Resources/bzflag.icns" ] || fail "app icon (bzflag.icns) not in Resources"
+          grep -q CFBundleIconFile dist/BZFlag.app/Contents/Info.plist || fail "Info.plist lacks CFBundleIconFile"
           # sdl2-compat dlopens libSDL3.dylib next to itself (search starts
           # at @loader_path) — missing it is a fatal-at-launch bug on any
           # clean Mac, and a load-command scan canNOT see it
